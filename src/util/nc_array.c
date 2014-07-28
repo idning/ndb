@@ -15,9 +15,7 @@
  * limitations under the License.
  */
 
-#include <stdlib.h>
-
-#include "nc_core.h"
+#include "nc_util.h"
 
 struct array *
 array_create(uint32_t n, size_t size)

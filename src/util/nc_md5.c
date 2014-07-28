@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-#include "nc_core.h"
+#include "nc_util.h"
 
 /*
  * This is an OpenSSL-compatible implementation of the RSA Data Security, Inc.

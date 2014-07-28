@@ -11,7 +11,7 @@
 #include <lualib.h>
 #include <lauxlib.h>
 
-#include "nc_core.h"
+#include "nc_util.h"
 
 typedef struct nc_conf_s {
     lua_State  *L;
@@ -21,7 +21,7 @@ typedef struct nc_conf_s {
 rstatus_t nc_conf_init(nc_conf_t *conf, const char *filename);
 rstatus_t nc_conf_deinit(nc_conf_t *conf);
 
-const char *nc_conf_get_str(nc_conf_t *conf, const char *name, char *default_v);
+char *nc_conf_get_str(nc_conf_t *conf, const char *name, char *default_v);
 int nc_conf_get_num(nc_conf_t *conf, const char *name, int default_v);
 
 #endif

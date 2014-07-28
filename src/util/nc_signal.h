@@ -18,7 +18,7 @@
 #ifndef _NC_SIGNAL_H_
 #define _NC_SIGNAL_H_
 
-#include "nc_core.h"
+#include "nc_util.h"
 
 struct signal {
     int  signo;

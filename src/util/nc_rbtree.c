@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-#include "nc_core.h"
+#include "nc_util.h"
 
 void
 rbtree_node_init(struct rbnode *node)

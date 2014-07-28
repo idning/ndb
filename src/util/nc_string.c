@@ -15,10 +15,7 @@
  * limitations under the License.
  */
 
-#include <stdlib.h>
-#include <string.h>
-
-#include "nc_core.h"
+#include "nc_util.h"
 
 /*
  * String (struct string) is a sequence of unsigned char objects terminated

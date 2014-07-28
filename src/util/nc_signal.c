@@ -15,11 +15,7 @@
  * limitations under the License.
  */
 
-#include <stdlib.h>
-#include <signal.h>
-
-#include "nc_core.h"
-#include "nc_signal.h"
+#include "nc_util.h"
 
 static struct signal signals[] = {
     { SIGUSR1, "SIGUSR1", 0,                 signal_handler },

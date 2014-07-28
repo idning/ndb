@@ -4,7 +4,7 @@
  * date   : 2014-06-29 21:10:59
  */
 
-#include "nc_core.h"
+#include "nc_util.h"
 
 rstatus_t
 nc_conf_init(nc_conf_t *conf, const char *filename)
@@ -90,11 +90,11 @@ out:
     return status;
 }
 
-const char *
+char *
 nc_conf_get_str(nc_conf_t *conf, const char *name, char *default_value)
 {
     rstatus_t         status;
-    const char       *ret;
+    char             *ret;
     lua_State        *L = conf->L;
 
     status = _lua_eval(L, name);
@@ -111,7 +111,7 @@ nc_conf_get_str(nc_conf_t *conf, const char *name, char *default_value)
         goto out;
     }
 
-    ret = lua_tostring(conf->L, -1);
+    ret = strdup(lua_tostring(conf->L, -1));
 
 out:
     lua_pop(L, lua_gettop(L));
@@ -133,7 +133,7 @@ nc_conf_get_num(nc_conf_t *conf, const char *name, int default_value)
     }
 
     if (!lua_isnumber(L, -1)) {
-        log_stderr("nc_conf: use default_value for option %s - %s", name, default_value);
+        log_stderr("nc_conf: use default_value for option %s - %d", name, default_value);
         ret = default_value;
         goto out;
     }

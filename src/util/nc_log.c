@@ -15,14 +15,7 @@
  * limitations under the License.
  */
 
-#include <stdlib.h>
-#include <stdarg.h>
-#include <ctype.h>
-#include <time.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-
-#include "nc_core.h"
+#include "nc_util.h"
 
 static struct logger logger;
 

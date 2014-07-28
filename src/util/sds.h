@@ -33,10 +33,7 @@
 
 #define SDS_MAX_PREALLOC (1024*1024)
 
-#include <sys/types.h>
-#include <stdarg.h>
-
-#include "nc_core.h"
+#include "nc_util.h"
 
 typedef char *sds;
 

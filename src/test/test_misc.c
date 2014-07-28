@@ -4,7 +4,7 @@
  * date   : 2014-06-30 17:26:37
  */
 
-#include "nc_core.h"
+#include "nc_util.h"
 #include "testhelp.h"
 
 /*********************** test array *************************/

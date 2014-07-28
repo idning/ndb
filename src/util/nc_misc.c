@@ -15,23 +15,7 @@
  * limitations under the License.
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <string.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <netdb.h>
-
-#include <sys/time.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/ioctl.h>
-
-#include <netinet/in.h>
-#include <netinet/tcp.h>
-
-#include "nc_core.h"
+#include "nc_util.h"
 
 #ifdef NC_HAVE_BACKTRACE
 # include <execinfo.h>
@@ -442,110 +426,6 @@ nc_msec_now(void)
     return nc_usec_now() / 1000LL;
 }
 
-static int
-nc_resolve_inet(struct string *name, int port, struct sockinfo *si)
-{
-    int status;
-    struct addrinfo *ai, *cai; /* head and current addrinfo */
-    struct addrinfo hints;
-    char *node, service[NC_UINTMAX_MAXLEN];
-    bool found;
-
-    ASSERT(nc_valid_port(port));
-
-    memset(&hints, 0, sizeof(hints));
-    hints.ai_flags = AI_NUMERICSERV;
-    hints.ai_family = AF_UNSPEC;     /* AF_INET or AF_INET6 */
-    hints.ai_socktype = SOCK_STREAM;
-    hints.ai_protocol = 0;
-    hints.ai_addrlen = 0;
-    hints.ai_addr = NULL;
-    hints.ai_canonname = NULL;
-
-    if (name != NULL) {
-        node = (char *)name->data;
-    } else {
-        /*
-         * If AI_PASSIVE flag is specified in hints.ai_flags, and node is
-         * NULL, then the returned socket addresses will be suitable for
-         * bind(2)ing a socket that will accept(2) connections. The returned
-         * socket address will contain the wildcard IP address.
-         */
-        node = NULL;
-        hints.ai_flags |= AI_PASSIVE;
-    }
-
-    nc_snprintf(service, NC_UINTMAX_MAXLEN, "%d", port);
-
-    status = getaddrinfo(node, service, &hints, &ai);
-    if (status < 0) {
-        log_error("address resolution of node '%s' service '%s' failed: %s",
-                  node, service, gai_strerror(status));
-        return -1;
-    }
-
-    /*
-     * getaddrinfo() can return a linked list of more than one addrinfo,
-     * since we requested for both AF_INET and AF_INET6 addresses and the
-     * host itself can be multi-homed. Since we don't care whether we are
-     * using ipv4 or ipv6, we just use the first address from this collection
-     * in the order in which it was returned.
-     *
-     * The sorting function used within getaddrinfo() is defined in RFC 3484;
-     * the order can be tweaked for a particular system by editing
-     * /etc/gai.conf
-     */
-    for (cai = ai, found = false; cai != NULL; cai = cai->ai_next) {
-        si->family = cai->ai_family;
-        si->addrlen = cai->ai_addrlen;
-        nc_memcpy(&si->addr, cai->ai_addr, si->addrlen);
-        found = true;
-        break;
-    }
-
-    freeaddrinfo(ai);
-
-    return !found ? -1 : 0;
-}
-
-static int
-nc_resolve_unix(struct string *name, struct sockinfo *si)
-{
-    struct sockaddr_un *un;
-
-    if (name->len >= NC_UNIX_ADDRSTRLEN) {
-        return -1;
-    }
-
-    un = &si->addr.un;
-
-    un->sun_family = AF_UNIX;
-    nc_memcpy(un->sun_path, name->data, name->len);
-    un->sun_path[name->len] = '\0';
-
-    si->family = AF_UNIX;
-    si->addrlen = sizeof(*un);
-    /* si->addr is an alias of un */
-
-    return 0;
-}
-
-/*
- * Resolve a hostname and service by translating it to socket address and
- * return it in si
- *
- * This routine is reentrant
- */
-int
-nc_resolve(struct string *name, int port, struct sockinfo *si)
-{
-    if (name != NULL && name->data[0] == '/') {
-        return nc_resolve_unix(name, si);
-    }
-
-    return nc_resolve_inet(name, port, si);
-}
-
 /*
  * Unresolve the socket address by translating it to a character string
  * describing the host and service
@@ -580,21 +460,16 @@ nc_unresolve_addr(struct sockaddr *addr, socklen_t addrlen)
 char *
 nc_unresolve_peer_desc(int sd)
 {
-    static struct sockinfo si;
-    struct sockaddr *addr;
-    socklen_t addrlen;
+    struct sockaddr_in addr;
+    socklen_t addrlen = sizeof(addr);
     int status;
 
-    memset(&si, 0, sizeof(si));
-    addr = (struct sockaddr *)&si.addr;
-    addrlen = sizeof(si.addr);
-
-    status = getpeername(sd, addr, &addrlen);
+    status = getpeername(sd, (struct sockaddr *)&addr, &addrlen);
     if (status < 0) {
         return "unknown";
     }
 
-    return nc_unresolve_addr(addr, addrlen);
+    return nc_unresolve_addr((struct sockaddr *)&addr, addrlen);
 }
 
 /*
@@ -606,19 +481,116 @@ nc_unresolve_peer_desc(int sd)
 char *
 nc_unresolve_desc(int sd)
 {
-    static struct sockinfo si;
-    struct sockaddr *addr;
-    socklen_t addrlen;
+    struct sockaddr_in addr;
+    socklen_t addrlen = sizeof(addr);
     int status;
 
-    memset(&si, 0, sizeof(si));
-    addr = (struct sockaddr *)&si.addr;
-    addrlen = sizeof(si.addr);
-
-    status = getsockname(sd, addr, &addrlen);
+    status = getsockname(sd, (struct sockaddr *)&addr, &addrlen);
     if (status < 0) {
         return "unknown";
     }
 
-    return nc_unresolve_addr(addr, addrlen);
+    return nc_unresolve_addr((struct sockaddr *)&addr, addrlen);
+}
+
+rstatus_t
+nc_daemonize(int dump_core)
+{
+    rstatus_t status;
+    pid_t pid, sid;
+    int fd;
+
+    pid = fork();
+    switch (pid) {
+    case -1:
+        log_error("fork() failed: %s", strerror(errno));
+        return NC_ERROR;
+
+    case 0:
+        break;
+
+    default:
+        /* parent terminates */
+        _exit(0);
+    }
+
+    /* 1st child continues and becomes the session leader */
+
+    sid = setsid();
+    if (sid < 0) {
+        log_error("setsid() failed: %s", strerror(errno));
+        return NC_ERROR;
+    }
+
+    if (signal(SIGHUP, SIG_IGN) == SIG_ERR) {
+        log_error("signal(SIGHUP, SIG_IGN) failed: %s", strerror(errno));
+        return NC_ERROR;
+    }
+
+    pid = fork();
+    switch (pid) {
+    case -1:
+        log_error("fork() failed: %s", strerror(errno));
+        return NC_ERROR;
+
+    case 0:
+        break;
+
+    default:
+        /* 1st child terminates */
+        _exit(0);
+    }
+
+    /* 2nd child continues */
+
+    /* change working directory */
+    if (dump_core == 0) {
+        status = chdir("/");
+        if (status < 0) {
+            log_error("chdir(\"/\") failed: %s", strerror(errno));
+            return NC_ERROR;
+        }
+    }
+
+    /* clear file mode creation mask */
+    umask(0);
+
+    /* redirect stdin, stdout and stderr to "/dev/null" */
+
+    fd = open("/dev/null", O_RDWR);
+    if (fd < 0) {
+        log_error("open(\"/dev/null\") failed: %s", strerror(errno));
+        return NC_ERROR;
+    }
+
+    status = dup2(fd, STDIN_FILENO);
+    if (status < 0) {
+        log_error("dup2(%d, STDIN) failed: %s", fd, strerror(errno));
+        close(fd);
+        return NC_ERROR;
+    }
+
+    status = dup2(fd, STDOUT_FILENO);
+    if (status < 0) {
+        log_error("dup2(%d, STDOUT) failed: %s", fd, strerror(errno));
+        close(fd);
+        return NC_ERROR;
+    }
+
+    status = dup2(fd, STDERR_FILENO);
+    if (status < 0) {
+        log_error("dup2(%d, STDERR) failed: %s", fd, strerror(errno));
+        close(fd);
+        return NC_ERROR;
+    }
+
+    if (fd > STDERR_FILENO) {
+        status = close(fd);
+        if (status < 0) {
+            log_error("close(%d) failed: %s", fd, strerror(errno));
+            return NC_ERROR;
+        }
+    }
+
+    return NC_OK;
 }

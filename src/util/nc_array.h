@@ -18,7 +18,7 @@
 #ifndef _NC_ARRAY_H_
 #define _NC_ARRAY_H_
 
-#include "nc_core.h"
+#include "nc_util.h"
 
 typedef int (*array_compare_t)(const void *, const void *);
 typedef rstatus_t (*array_each_t)(void *, void *);

@@ -18,7 +18,7 @@
 #ifndef _NC_EVENT_H_
 #define _NC_EVENT_H_
 
-#include "nc_core.h"
+#include "nc_util.h"
 
 /* select event implement */
 #ifdef __linux__

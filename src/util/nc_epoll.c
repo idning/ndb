@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-#include "nc_core.h"
+#include "nc_util.h"
 
 #ifdef NC_HAVE_EPOLL
 
@@ -60,7 +60,7 @@ event_base_create(int nevent, event_cb_t cb)
     evb->nevent = nevent;
     evb->cb = cb;
 
-    log_debug(LOG_INFO, "e %d with nevent %d", evb->ep, evb->nevent);
+    log_debug(LOG_INFO, "event %d with nevent %d", evb->ep, evb->nevent);
 
     return evb;
 }
@@ -96,7 +96,7 @@ event_add_in(struct event_base *evb, struct conn *c)
 
     ASSERT(ep > 0);
     ASSERT(c != NULL);
-    ASSERT(c->sd > 0);
+    ASSERT(c->fd > 0);
 
     if (c->recv_active) {
         return 0;
@@ -105,9 +105,9 @@ event_add_in(struct event_base *evb, struct conn *c)
     event.events = (uint32_t)(EPOLLIN | EPOLLET);
     event.data.ptr = c;
 
-    status = epoll_ctl(ep, EPOLL_CTL_MOD, c->sd, &event);
+    status = epoll_ctl(ep, EPOLL_CTL_MOD, c->fd, &event);
     if (status < 0) {
-        log_error("epoll ctl on e %d sd %d failed: %s", ep, c->sd,
+        log_error("epoll ctl on e %d fd %d failed: %s", ep, c->fd,
                   strerror(errno));
     } else {
         c->recv_active = 1;
@@ -131,7 +131,7 @@ event_add_out(struct event_base *evb, struct conn *c)
 
     ASSERT(ep > 0);
     ASSERT(c != NULL);
-    ASSERT(c->sd > 0);
+    ASSERT(c->fd > 0);
     ASSERT(c->recv_active);
 
     if (c->send_active) {
@@ -141,9 +141,9 @@ event_add_out(struct event_base *evb, struct conn *c)
     event.events = (uint32_t)(EPOLLIN | EPOLLOUT | EPOLLET);
     event.data.ptr = c;
 
-    status = epoll_ctl(ep, EPOLL_CTL_MOD, c->sd, &event);
+    status = epoll_ctl(ep, EPOLL_CTL_MOD, c->fd, &event);
     if (status < 0) {
-        log_error("epoll ctl on e %d sd %d failed: %s", ep, c->sd,
+        log_error("epoll ctl on e %d fd %d failed: %s", ep, c->fd,
                   strerror(errno));
     } else {
         c->send_active = 1;
@@ -161,7 +161,7 @@ event_del_out(struct event_base *evb, struct conn *c)
 
     ASSERT(ep > 0);
     ASSERT(c != NULL);
-    ASSERT(c->sd > 0);
+    ASSERT(c->fd > 0);
     ASSERT(c->recv_active);
 
     if (!c->send_active) {
@@ -171,9 +171,9 @@ event_del_out(struct event_base *evb, struct conn *c)
     event.events = (uint32_t)(EPOLLIN | EPOLLET);
     event.data.ptr = c;
 
-    status = epoll_ctl(ep, EPOLL_CTL_MOD, c->sd, &event);
+    status = epoll_ctl(ep, EPOLL_CTL_MOD, c->fd, &event);
     if (status < 0) {
-        log_error("epoll ctl on e %d sd %d failed: %s", ep, c->sd,
+        log_error("epoll ctl on e %d fd %d failed: %s", ep, c->fd,
                   strerror(errno));
     } else {
         c->send_active = 0;
@@ -191,14 +191,14 @@ event_add_conn(struct event_base *evb, struct conn *c)
 
     ASSERT(ep > 0);
     ASSERT(c != NULL);
-    ASSERT(c->sd > 0);
+    ASSERT(c->fd > 0);
 
     event.events = (uint32_t)(EPOLLIN | EPOLLOUT | EPOLLET);
     event.data.ptr = c;
 
-    status = epoll_ctl(ep, EPOLL_CTL_ADD, c->sd, &event);
+    status = epoll_ctl(ep, EPOLL_CTL_ADD, c->fd, &event);
     if (status < 0) {
-        log_error("epoll ctl on e %d sd %d failed: %s", ep, c->sd,
+        log_error("epoll ctl on e %d fd %d failed: %s", ep, c->fd,
                   strerror(errno));
     } else {
         c->send_active = 1;
@@ -216,11 +216,11 @@ event_del_conn(struct event_base *evb, struct conn *c)
 
     ASSERT(ep > 0);
     ASSERT(c != NULL);
-    ASSERT(c->sd > 0);
+    ASSERT(c->fd > 0);
 
-    status = epoll_ctl(ep, EPOLL_CTL_DEL, c->sd, NULL);
+    status = epoll_ctl(ep, EPOLL_CTL_DEL, c->fd, NULL);
     if (status < 0) {
-        log_error("epoll ctl on e %d sd %d failed: %s", ep, c->sd,
+        log_error("epoll ctl on e %d fd %d failed: %s", ep, c->fd,
                   strerror(errno));
     } else {
         c->recv_active = 0;
@@ -293,6 +293,5 @@ event_wait(struct event_base *evb, int timeout)
 
     NOT_REACHED();
 }
-
 
 #endif /* NC_HAVE_EPOLL */

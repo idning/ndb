@@ -4,7 +4,7 @@
  * date   : 2014-06-30 16:24:20
  */
 
-#include "nc_core.h"
+#include "nc_util.h"
 #include "testhelp.h"
 
 static const char       *config_file = "/tmp/test_conf.conf";

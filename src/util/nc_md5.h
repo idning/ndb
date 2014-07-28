@@ -7,7 +7,7 @@
 #ifndef _NC_MD5_H_
 #define _NC_MD5_H_
 
-#include "nc_core.h"
+#include "nc_util.h"
 
 typedef unsigned int MD5_u32plus;
 

@@ -7,9 +7,8 @@
 #ifndef _FILE_H_
 #define _FILE_H_
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
+
+#include "nc_util.h"
 
 static
 inline bool file_exists(const char *filename){
