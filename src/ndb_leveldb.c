@@ -32,7 +32,7 @@ store_init(store_t *s)
     leveldb_writeoptions_t      *woptions;
 
     s->cmp = leveldb_comparator_create(NULL, cmp_destroy, cmp_compare, cmp_name);
-    s->cache = leveldb_cache_create_lru(100000);
+    s->cache = leveldb_cache_create_lru(s->cache_size);            /* cache size */
     s->env = leveldb_create_default_env();
 
     s->options = options = leveldb_options_create();
@@ -47,10 +47,12 @@ store_init(store_t *s)
     leveldb_options_set_cache(options, s->cache);
     leveldb_options_set_env(options, s->env);
     leveldb_options_set_info_log(options, NULL);
-    leveldb_options_set_write_buffer_size(options, 100000);
     leveldb_options_set_paranoid_checks(options, 1);
     leveldb_options_set_max_open_files(options, 10);
-    leveldb_options_set_block_size(options, 1024);
+
+    leveldb_options_set_block_size(options, s->block_size);          /* block size */
+    leveldb_options_set_write_buffer_size(options, s->write_buffer_size); /* buffer size */
+
     leveldb_options_set_block_restart_interval(options, 8);
     leveldb_options_set_compression(options, leveldb_no_compression);
 
@@ -66,7 +68,7 @@ store_init(store_t *s)
     leveldb_writeoptions_set_sync(woptions, 1);
 
     /* open db */
-    s->db = leveldb_open(s->options, "db", &err);
+    s->db = leveldb_open(s->options, s->dbpath, &err);
     if (err != NULL) {
         log_debug(LOG_WARN, "leveldb_open return err: %s", err);
         leveldb_free(err);

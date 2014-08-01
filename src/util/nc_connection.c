@@ -358,7 +358,7 @@ conn_add_in(struct conn *conn)
 }
 
 /* TODO: change this */
-struct mbuf *
+static struct mbuf *
 conn_ensure_mbuf(struct conn *conn, size_t len)
 {
     struct mbuf *mbuf;
@@ -381,7 +381,7 @@ conn_ensure_mbuf(struct conn *conn, size_t len)
  TODO: change this
  */
 rstatus_t
-conn_sendq_append(struct conn *conn, uint8_t *pos, size_t n)
+conn_sendq_append(struct conn *conn, char *pos, size_t n)
 {
     struct mbuf *mbuf;
 

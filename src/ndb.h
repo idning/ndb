@@ -16,7 +16,6 @@ typedef struct instance_s {
     store_t             store;
 
     bool                daemonize;
-    char                *dbpath;
     int                 loglevel;                   /* log level */
     char                *logfile;                   /* log filename */
     pid_t               pid;                        /* process id */

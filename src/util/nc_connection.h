@@ -68,6 +68,6 @@ rstatus_t conn_recv(struct conn *conn);
 rstatus_t conn_send(struct conn *conn);
 rstatus_t conn_add_out(struct conn *conn);
 rstatus_t conn_add_in(struct conn *conn);
-rstatus_t conn_sendq_append(struct conn *conn, uint8_t *pos, size_t n);
+rstatus_t conn_sendq_append(struct conn *conn, char *pos, size_t n);
 
 #endif

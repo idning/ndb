@@ -12,6 +12,10 @@
 
 typedef struct store_s {
     void                        *owner;
+    char                        *dbpath;
+    size_t                      block_size;
+    size_t                      cache_size;
+    size_t                      write_buffer_size;
 
     leveldb_t                   *db;
     leveldb_comparator_t        *cmp;

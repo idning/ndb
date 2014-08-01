@@ -106,10 +106,18 @@ ndb_load_conf(instance_t *instance)
     instance->ctx.backlog   = nc_conf_get_num(&instance->conf, "backlog", 1024);
     instance->ctx.mbuf_size = nc_conf_get_num(&instance->conf, "mbuf_size", 512);
 
+#define K *1024
+#define M *1024*1024
+    instance->store.dbpath     = nc_conf_get_str(&instance->conf, "leveldb.dbpath", "db");
+    instance->store.block_size = nc_conf_get_num(&instance->conf, "leveldb.block_size", 32 K);
+    instance->store.cache_size = nc_conf_get_num(&instance->conf, "leveldb.cache_size", 1 M);
+    instance->store.write_buffer_size = nc_conf_get_num(&instance->conf, "leveldb.write_buffer_size", 1 M);
+#undef K
+#undef M
+
     instance->daemonize = nc_conf_get_num(&instance->conf, "daemonize", false);
     instance->loglevel  = nc_conf_get_num(&instance->conf, "loglevel", LOG_NOTICE);
     instance->logfile   = nc_conf_get_str(&instance->conf, "logfile", "log/ndb.log");
-    instance->dbpath    = nc_conf_get_str(&instance->conf, "dbpath", "db");
 
     return NC_OK;
 }

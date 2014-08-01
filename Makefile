@@ -9,5 +9,6 @@ clean:
 	cd src && $(MAKE) $@
 	find . -name core | xargs rm -f
 	rm -f tags cscope.*
+	rm -rf db
 
 .PHONY: all clean
