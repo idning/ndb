@@ -43,20 +43,31 @@ msg_get(struct conn *conn)
 void
 msg_put(msg_t *msg)
 {
+    int i;
+
     log_debug(LOG_VVERB, "put msg %p id %"PRIu64"", msg, msg->id);
+
+    if (msg->argv) {
+        for (i = 0; i < msg->argc; i++) {
+            sdsfree(msg->argv[i]);
+        }
+        nc_free(msg->argv);
+    }
+
     nc_free(msg);
 }
 
 static sds
 msg_read_len(struct conn *conn, uint32_t len)
 {
-    sds s ;
+    sds s = NULL;
     struct mbuf *mbuf, *nbuf;
 
     /* TODO */
-    /* if (conn->recv_queue_bytes < len) { */
-        /* return NULL; */
-    /* } */
+    if (conn->recv_queue_bytes < len) {
+        return NULL;
+    }
+    conn->recv_queue_bytes -= len;
 
     s = sdsempty();
 
@@ -69,7 +80,7 @@ msg_read_len(struct conn *conn, uint32_t len)
         }
 
         len -= mbuf_length(mbuf);
-        sdscatlen(s, mbuf->pos, mbuf_length(mbuf));
+        s = sdscatlen(s, mbuf->pos, mbuf_length(mbuf));
         mbuf->pos = mbuf->last;
 
         mbuf_remove(&conn->recv_queue, mbuf);
@@ -79,9 +90,13 @@ msg_read_len(struct conn *conn, uint32_t len)
     if (mbuf == NULL) {
         ASSERT(len == 0);
     } else {
-        sdscatlen(s, mbuf->pos, len);
+        s = sdscatlen(s, mbuf->pos, len);
         mbuf->pos += len;
+        len = 0;
     }
+
+    ASSERT(len == 0);
+    ASSERT(sdslen(s) != 0);
 
     log_debug(LOG_DEBUG, "msg_read_len return sds: %p, len:%d", s, sdslen(s));
     return s;
@@ -165,11 +180,13 @@ msg_parse(struct conn *conn)
                 goto again;
             }
 
+            ASSERT(sdslen(s) == msg->rarglen + 2);
+
             msg->state = SW_ARGV_LEN;
             msg->argv[msg->rargidx++] = s;
 
             /* eat \r\n */
-            sdsrange(s, 0, -3);
+            s = sdstrim(s, "\r\n");
 
             if (msg->rargidx == msg->argc) {
                 msg->state = SW_END;

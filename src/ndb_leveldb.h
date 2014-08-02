@@ -17,6 +17,10 @@ typedef struct store_s {
     size_t                      cache_size;
     size_t                      write_buffer_size;
 
+    int                         compression;
+    int                         read_verify_checksum;
+    int                         write_sync;
+
     leveldb_t                   *db;
     leveldb_comparator_t        *cmp;
     leveldb_cache_t             *cache;
@@ -29,7 +33,7 @@ typedef struct store_s {
 rstatus_t store_init(store_t *s);
 rstatus_t store_deinit(store_t *s);
 
-rstatus_t store_get(store_t *s, sds key, sds val);
+rstatus_t store_get(store_t *s, sds key, sds *val);
 rstatus_t store_set(store_t *s, sds key, sds val);
 rstatus_t store_del(store_t *s, sds key);
 

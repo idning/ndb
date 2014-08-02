@@ -6,7 +6,7 @@
 
 #include "ndb.h"
 
-#define NC_VERSION_STRING "0.0.1"
+#define NDB_VERSION_STRING "0.0.1"
 
 static struct option long_options[] = {
     { "help",           no_argument,        NULL,   'h' },
@@ -28,7 +28,7 @@ ndb_show_usage(void)
 static void
 ndb_show_version(void)
 {
-    log_stderr("ndb-" NC_VERSION_STRING);
+    log_stderr("ndb-" NDB_VERSION_STRING);
 }
 
 static rstatus_t
@@ -75,6 +75,7 @@ ndb_get_options(int argc, const char **argv, instance_t *instance)
 
         }
     }
+
     if (instance->configfile == NULL) {
         return NC_ERROR;
     }
@@ -84,14 +85,17 @@ ndb_get_options(int argc, const char **argv, instance_t *instance)
 static void
 ndb_print_run(instance_t *instance)
 {
-    loga("ndb-%s started (pid %d)", NC_VERSION_STRING, instance->pid);
+    loga("ndb-%s started (pid %d)", NDB_VERSION_STRING, instance->pid);
 }
 
 static void
 ndb_print_done(instance_t *instance)
 {
-    loga("ndb-%s done (pid %d)", NC_VERSION_STRING, instance->pid);
+    loga("ndb-%s done (pid %d)", NDB_VERSION_STRING, instance->pid);
 }
+
+#define K *1024
+#define M *1024*1024
 
 static rstatus_t
 ndb_load_conf(instance_t *instance)
@@ -102,67 +106,55 @@ ndb_load_conf(instance_t *instance)
         return status;
     }
 
-    instance->ctx.listen    = nc_conf_get_str(&instance->conf, "listen", "0.0.0.0:5527");
-    instance->ctx.backlog   = nc_conf_get_num(&instance->conf, "backlog", 1024);
-    instance->ctx.mbuf_size = nc_conf_get_num(&instance->conf, "mbuf_size", 512);
-
-#define K *1024
-#define M *1024*1024
-    instance->store.dbpath     = nc_conf_get_str(&instance->conf, "leveldb.dbpath", "db");
-    instance->store.block_size = nc_conf_get_num(&instance->conf, "leveldb.block_size", 32 K);
-    instance->store.cache_size = nc_conf_get_num(&instance->conf, "leveldb.cache_size", 1 M);
-    instance->store.write_buffer_size = nc_conf_get_num(&instance->conf, "leveldb.write_buffer_size", 1 M);
-#undef K
-#undef M
-
     instance->daemonize = nc_conf_get_num(&instance->conf, "daemonize", false);
     instance->loglevel  = nc_conf_get_num(&instance->conf, "loglevel", LOG_NOTICE);
     instance->logfile   = nc_conf_get_str(&instance->conf, "logfile", "log/ndb.log");
 
+    instance->srv.listen    = nc_conf_get_str(&instance->conf, "listen", "0.0.0.0:5527");
+    instance->srv.backlog   = nc_conf_get_num(&instance->conf, "backlog", 1024);
+    instance->srv.mbuf_size = nc_conf_get_num(&instance->conf, "mbuf_size", 512);
+
+    instance->store.dbpath     = nc_conf_get_str(&instance->conf, "leveldb.dbpath", "db");
+    instance->store.block_size = nc_conf_get_num(&instance->conf, "leveldb.block_size", 32 K);
+    instance->store.cache_size = nc_conf_get_num(&instance->conf, "leveldb.cache_size", 1 M);
+    instance->store.write_buffer_size = nc_conf_get_num(&instance->conf, "leveldb.write_buffer_size", 1 M);
+
+    instance->store.compression = nc_conf_get_num(&instance->conf, "leveldb.compression", 0);
+
+    instance->store.read_verify_checksum = nc_conf_get_num(&instance->conf, "leveldb.read_verify_checksum", 0);
+    instance->store.write_sync = nc_conf_get_num(&instance->conf, "leveldb.write_sync", 0);
+
     return NC_OK;
 }
+#undef K
+#undef M
 
 rstatus_t
 ndb_process_msg(struct conn *conn, msg_t *msg)
 {
-    context_t *ctx = conn->owner;
-    instance_t *instance = ctx->owner;
     rstatus_t status;
-
-    log_debug(LOG_INFO, "ndb_process_msg : %"PRIu64"", msg->id);
 
     if (msg->argc <= 0) {
         log_debug(LOG_INFO, "bad msg with msg->argc<=0");
         return NC_ERROR;
     }
 
-    /* TODO  */
-    sds cmdget = sdsnew("GET");
-    sds cmdset = sdsnew("SET");
-    sds cmd = msg->argv[0];
+    log_debug(LOG_INFO, "ndb_process_msg: %"PRIu64" argc=%d, cmd=%s", msg->id,
+            msg->argc, msg->argv[0]);
 
-    sdstoupper(cmd);
-
-    if (sdscmp(cmd, cmdset) == 0) {
-        sds key = msg->argv[1];
-        sds val = msg->argv[2];
-
-        status = store_set(&instance->store, key, val);
-
-        conn_sendq_append(conn, "ok", 2);
-
-    } else if (sdscmp(cmd, cmdget) == 0) {
-        sds key = msg->argv[1];
-        sds val = sdsempty();
-        status = store_get(&instance->store, key, val);
-
-        conn_sendq_append(conn, val, sdslen(val));
+    status = command_process(conn, msg);
+    if (status != NC_OK) { /* TODO: nothing can come here */
+        log_debug(LOG_INFO, "something error in command_process ");
+        return NC_ERROR;
     }
 
-    return conn_add_out(conn);
+    msg_put(msg);
+    conn->data = NULL;
+
+    return NC_OK;
 }
 
-rstatus_t
+static rstatus_t
 ndb_conn_recv_done(struct conn *conn)
 {
     rstatus_t status;
@@ -186,13 +178,15 @@ ndb_conn_recv_done(struct conn *conn)
             conn->err = errno;
             conn_add_out(conn);
         } else if (status == NC_EAGAIN) {
+
+            conn_add_in(conn);
             break;
         }
     }
     return NC_OK;
 }
 
-rstatus_t
+static rstatus_t
 ndb_conn_send_done(struct conn *conn)
 {
     log_debug(LOG_INFO, "conn_send_done on conn: %p", conn);
@@ -223,6 +217,8 @@ ndb_init(instance_t *instance)
 
     msg_init();
 
+    command_init();
+
     if (instance->daemonize) {
         status = nc_daemonize(1);
         if (status != NC_OK) {
@@ -241,14 +237,13 @@ ndb_init(instance_t *instance)
     if (status != NC_OK) {
         return status;
     }
+    instance->store.owner = instance;
 
-    status = core_init(&instance->ctx);
+    status = server_init(&instance->srv);
     if (status != NC_OK) {
         return status;
     }
-
-    instance->ctx.owner     = instance;
-    instance->store.owner   = instance;
+    instance->srv.owner = instance;
 
     ndb_print_run(instance);
 
@@ -259,13 +254,16 @@ static rstatus_t
 ndb_deinit(instance_t *instance)
 {
     signal_deinit();
+
     msg_deinit();
+
+    command_deinit();
 
     ndb_print_done(instance);
 
     store_deinit(&instance->store);
 
-    core_deinit(&instance->ctx);
+    server_deinit(&instance->srv);
 
     log_deinit();
 
@@ -275,9 +273,8 @@ ndb_deinit(instance_t *instance)
 static rstatus_t
 ndb_run(instance_t *instance)
 {
-    instance->ctx.accept_done = ndb_conn_accept_done;
-
-    return core_run(&instance->ctx);
+    instance->srv.accept_done = ndb_conn_accept_done;
+    return server_run(&instance->srv);
 }
 
 int

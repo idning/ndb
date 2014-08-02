@@ -1,7 +1,7 @@
 # we have to use g++ to static link libsnappy.a
 LD=g++
 
-CFLAGS=-std=c99 -pedantic -Wall -O0 -g -ggdb -D_POSIX_C_SOURCE -D_GNU_SOURCE -DNC_DEBUG_LOG
+CFLAGS=-std=c99 -pedantic -Wall -O0 -g -ggdb -D_POSIX_C_SOURCE -D_GNU_SOURCE -DNC_DEBUG_LOG -DHAVE_ASSERT_PANIC
 CFLAGS+= -I../deps/lua/src -I./util/
 
 LDFLAGS=-g -ggdb -rdynamic
@@ -33,7 +33,7 @@ clean:
 
 #kv-server
 KV_BIN=ndb
-KV_OBJ=$(UTIL_OBJ) ndb.o ndb_msg.o ndb_leveldb.o
+KV_OBJ=$(UTIL_OBJ) ndb.o ndb_msg.o ndb_leveldb.o ndb_command.o
 $(KV_BIN): $(KV_OBJ)
 	$(LD) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 

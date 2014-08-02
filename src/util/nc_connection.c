@@ -23,6 +23,7 @@ static struct conn_tqh free_connq; /* free conn q */
 
 rstatus_t conn_recv(struct conn *conn);
 rstatus_t conn_send(struct conn *conn);
+rstatus_t conn_close(struct conn *conn);
 
 static struct conn *
 _conn_get(void)
@@ -65,6 +66,11 @@ _conn_get(void)
     conn->eof = 0;
     conn->done = 0;
 
+    /* for client conn */
+    conn->recv = conn_recv;
+    conn->send = conn_send;
+    conn->close = conn_close;
+
     return conn;
 }
 
@@ -95,9 +101,11 @@ void
 conn_put(struct conn *conn)
 {
     ASSERT(conn->fd < 0);
-    ASSERT(conn->owner == NULL);
+    ASSERT(STAILQ_EMPTY(&conn->recv_queue));
+    ASSERT(STAILQ_EMPTY(&conn->send_queue));
 
     log_debug(LOG_VVERB, "put conn %p", conn);
+    /* TODO: free mbuf here */
 
     nfree_connq++;
     TAILQ_INSERT_HEAD(&free_connq, conn, conn_tqe);
@@ -144,6 +152,7 @@ conn_recv_buf(struct conn *conn, void *buf, size_t size)
                 conn->recv_ready = 0;
             }
             conn->recv_bytes += (size_t)n;
+            conn->recv_queue_bytes += (size_t)n;
             return n;
         }
 
@@ -231,7 +240,7 @@ conn_send_buf(struct conn *conn, void *buf, size_t size)
 
     ASSERT(buf != NULL);
     ASSERT(size > 0);
-    ASSERT(conn->recv_ready);
+    ASSERT(conn->send_ready);
 
     for (;;) {
         n = nc_write(conn->fd, buf, size);
@@ -304,6 +313,8 @@ conn_send_queue(struct conn *conn)
         }
 
         ASSERT(mbuf->pos == mbuf->last);
+
+        mbuf_remove(&conn->send_queue, mbuf);
         mbuf_put(mbuf);
     }
 
@@ -335,63 +346,88 @@ rstatus_t
 conn_add_out(struct conn *conn)
 {
     rstatus_t status;
-    context_t *ctx = conn->owner;
+    server_t *srv = conn->owner;
 
-    status = event_add_out(ctx->evb, conn);
+    status = event_add_out(srv->evb, conn);
     if (status != NC_OK) {
         conn->err = errno;
     }
     return status;
+}
+
+rstatus_t
+conn_close(struct conn *conn)
+{
+    rstatus_t status;
+    struct mbuf *mbuf, *nbuf;            /* current and next mbuf */
+
+    if (conn->fd < 0) {
+        conn_put(conn);
+        return NC_OK;
+    }
+
+    if (! STAILQ_EMPTY(&conn->recv_queue)) {
+        log_debug(LOG_WARN, "close conn %d discard data in send_queue", conn->fd);
+        for (mbuf = STAILQ_FIRST(&conn->recv_queue); mbuf != NULL ; mbuf = nbuf) {
+            nbuf = STAILQ_NEXT(mbuf, next);
+            mbuf_remove(&conn->recv_queue, mbuf);
+            mbuf_put(mbuf);
+        }
+    }
+
+    if (! STAILQ_EMPTY(&conn->send_queue)) {
+        log_debug(LOG_WARN, "close conn %d discard data in send_queue", conn->fd);
+        for (mbuf = STAILQ_FIRST(&conn->send_queue); mbuf != NULL ; mbuf = nbuf) {
+            nbuf = STAILQ_NEXT(mbuf, next);
+            mbuf_remove(&conn->send_queue, mbuf);
+            mbuf_put(mbuf);
+        }
+    }
+
+    status = close(conn->fd);
+    if (status < 0) {
+        log_error("close c %d failed, ignored: %s", conn->fd, strerror(errno));
+    }
+    conn->fd = -1;
+
+    conn_put(conn);
+    return NC_OK;
 }
 
 rstatus_t
 conn_add_in(struct conn *conn)
 {
     rstatus_t status;
-    context_t *ctx = conn->owner;
+    server_t *srv = conn->owner;
 
-    status = event_add_in(ctx->evb, conn);
+    status = event_add_in(srv->evb, conn);
     if (status != NC_OK) {
         conn->err = errno;
     }
     return status;
 }
 
-/* TODO: change this */
-static struct mbuf *
-conn_ensure_mbuf(struct conn *conn, size_t len)
-{
-    struct mbuf *mbuf;
-
-    if (STAILQ_EMPTY(&conn->send_queue) ||
-        mbuf_size(STAILQ_LAST(&conn->send_queue, mbuf, next)) < len) {
-        mbuf = mbuf_get();
-        if (mbuf == NULL) {
-            return NULL;
-        }
-        mbuf_insert(&conn->send_queue, mbuf);
-    } else {
-        mbuf = STAILQ_LAST(&conn->send_queue, mbuf, next);
-    }
-    return mbuf;
-}
-
-/*
- * append small(small than a mbuf) content into
- TODO: change this
- */
 rstatus_t
 conn_sendq_append(struct conn *conn, char *pos, size_t n)
 {
     struct mbuf *mbuf;
+    size_t bytes = 0;
+    size_t len;
 
-    mbuf = conn_ensure_mbuf(conn, n);
-    if (mbuf == NULL) {
-        return NC_ENOMEM;
-    }
+    while (bytes < n) {
+        mbuf = STAILQ_LAST(&conn->send_queue, mbuf, next);
+        if ((mbuf == NULL) || mbuf_full(mbuf)) {
+            mbuf = mbuf_get();
+            if (mbuf == NULL) {
+                return NC_ENOMEM;
+            }
+            mbuf_insert(&conn->send_queue, mbuf);
+        }
 
-    ASSERT(n <= mbuf_size(mbuf));
+        len = MIN(mbuf_size(mbuf), n - bytes);
+        mbuf_copy(mbuf, pos + bytes, len);
+        bytes += len;
+    };
 
-    mbuf_copy(mbuf, pos, n);
     return NC_OK;
 }

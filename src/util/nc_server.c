@@ -1,12 +1,44 @@
 #include "nc_server.h"
 
+/* TODO: rename => srv_init */
+
+static rstatus_t handle_event(void *arg, uint32_t events);
+static rstatus_t handle_timer(server_t *srv);
+
+rstatus_t
+server_init(server_t *srv)
+{
+    mbuf_init(srv->mbuf_size);
+
+    conn_init();
+
+    srv->evb = event_base_create(EVENT_SIZE, &handle_event);
+    if (srv->evb == NULL) {
+        return NC_ERROR;
+    }
+
+    return NC_OK;
+}
+
+rstatus_t
+server_deinit(server_t *srv)
+{
+    conn_deinit();
+
+    mbuf_deinit();
+
+    event_base_destroy(srv->evb);
+
+    return NC_OK;
+}
+
 static rstatus_t
 server_accept(struct conn *p)
 {
     rstatus_t status;
     struct conn *c;
     int fd;
-    context_t *ctx = p->owner;
+    server_t *srv = p->owner;
 
     ASSERT(p->fd > 0);
     ASSERT(p->recv_active && p->recv_ready);
@@ -42,7 +74,7 @@ server_accept(struct conn *p)
 
     log_debug(LOG_DEBUG, "accept on p %d got fd: %d", p->fd, fd);
 
-    c = conn_get(ctx);
+    c = conn_get(srv);
     if (c == NULL) {
         log_error("get conn for c %d from p %d failed: %s", fd, p->fd,
                   strerror(errno));
@@ -53,12 +85,7 @@ server_accept(struct conn *p)
         return NC_ENOMEM;
     }
     c->fd = fd;
-    /* for client conn */
-    c->recv = conn_recv;
-    c->send = conn_send;
-    /* TODO */
-    /* c->close = conn_close; */
-    ctx->accept_done(c);
+    srv->accept_done(c);
 
     status = nc_set_nonblocking(c->fd);
     if (status < 0) {
@@ -74,7 +101,7 @@ server_accept(struct conn *p)
                  c->fd, p->fd, strerror(errno));
     }
 
-    status = event_add_conn(ctx->evb, c);
+    status = event_add_conn(srv->evb, c);
     if (status < 0) {
         log_error("event add conn from p %d failed: %s", p->fd,
                   strerror(errno));
@@ -82,7 +109,7 @@ server_accept(struct conn *p)
         return status;
     }
 
-    status = event_del_out(ctx->evb, c);
+    status = event_del_out(srv->evb, c);
     if (status < 0) {
         log_error("event del out fd %d failed: %s",
                   c->fd, strerror(errno));
@@ -100,7 +127,6 @@ server_recv(struct conn *conn)
 {
     rstatus_t status;
 
-    ASSERT(conn->proxy && !conn->client);
     ASSERT(conn->recv_active);
 
     conn->recv_ready = 1;
@@ -115,7 +141,7 @@ server_recv(struct conn *conn)
 }
 
 static rstatus_t
-server_listen(context_t *ctx)
+server_listen(server_t *srv)
 {
     int fd;
     char *host;
@@ -124,15 +150,15 @@ server_listen(context_t *ctx)
     rstatus_t status;
     struct addrinfo hints, *res;
 
-    /* get host/port from ctx->listen */
-    port = strchr(ctx->listen, ':');
+    /* get host/port from srv->listen */
+    port = strchr(srv->listen, ':');
     if (port != NULL) {
-        host = ctx->listen;
+        host = srv->listen;
         *port = '\0';
         port ++;
     } else {  /* no ':' found */
         host = NULL;
-        port = ctx->listen;
+        port = srv->listen;
     }
 
     /* Get the address info */
@@ -164,7 +190,7 @@ server_listen(context_t *ctx)
         return NC_ERROR;
     }
 
-    status = listen(fd, ctx->backlog);
+    status = listen(fd, srv->backlog);
     if (status < 0) {
         log_error("listen on p %d on addr '%s:%s' failed: %s", fd,
                   host, port, strerror(errno));
@@ -178,22 +204,24 @@ server_listen(context_t *ctx)
         return NC_ERROR;
     }
 
-    conn = conn_get(ctx);
+    conn = conn_get(srv);
     if (conn == NULL) {
         return NC_ENOMEM;
     }
 
     conn->fd = fd;
     conn->recv = server_recv;
+    conn->send = NULL;
+    conn->send = close;
 
-    status = event_add_conn(ctx->evb, conn);
+    status = event_add_conn(srv->evb, conn);
     if (status < 0) {
         log_error("event add conn p %d on addr '%s:%s' failed: %s",
                   fd, host, port, strerror(errno));
         return NC_ERROR;
     }
 
-    status = event_del_out(ctx->evb, conn);
+    status = event_del_out(srv->evb, conn);
     if (status < 0) {
         log_error("event del out p %d on addr '%s:%s' failed: %s",
                   fd, host, port, strerror(errno));
@@ -206,40 +234,31 @@ server_listen(context_t *ctx)
     return NC_OK;
 }
 
-/* TODO: rename => ctx_init */
-
-static rstatus_t core_core(void *arg, uint32_t events);
-
 rstatus_t
-core_init(context_t *ctx)
+server_run(server_t *srv)
 {
+    int nsd;
+    rstatus_t status;
 
-    mbuf_init(ctx->mbuf_size);
-
-    conn_init();
-
-    ctx->evb = event_base_create(EVENT_SIZE, &core_core);
-    if (ctx->evb == NULL) {
-        return NC_ERROR;
+    status = server_listen(srv);
+    if (status != NC_OK) {
+        return status;
     }
 
-    return NC_OK;
-}
+    for (;;) {
+        nsd = event_wait(srv->evb, srv->ev_timeout);
+        if (nsd < 0) {
+            return NC_ERROR;
+        }
+        handle_timer(srv);
+    }
 
-rstatus_t
-core_deinit(context_t *ctx)
-{
-    conn_deinit();
-
-    mbuf_deinit();
-
-    event_base_destroy(ctx->evb);
-
+    NOT_REACHED();
     return NC_OK;
 }
 
 static rstatus_t
-core_recv(context_t *ctx, struct conn *conn)
+handle_recv(server_t *srv, struct conn *conn)
 {
     rstatus_t status;
 
@@ -253,7 +272,7 @@ core_recv(context_t *ctx, struct conn *conn)
 }
 
 static rstatus_t
-core_send(context_t *ctx, struct conn *conn)
+handle_send(server_t *srv, struct conn *conn)
 {
     rstatus_t status;
 
@@ -267,7 +286,7 @@ core_send(context_t *ctx, struct conn *conn)
 }
 
 static void
-core_close(context_t *ctx, struct conn *conn)
+handle_close(server_t *srv, struct conn *conn)
 {
     rstatus_t status;
 
@@ -278,7 +297,7 @@ core_close(context_t *ctx, struct conn *conn)
               conn->eof, conn->done, conn->recv_bytes, conn->send_bytes,
               conn->err ? ':' : ' ', conn->err ? strerror(conn->err) : "");
 
-    status = event_del_conn(ctx->evb, conn);
+    status = event_del_conn(srv->evb, conn);
     if (status < 0) {
         log_warn("event del conn %d failed, ignored: %s",
                  conn->fd, strerror(errno));
@@ -288,7 +307,7 @@ core_close(context_t *ctx, struct conn *conn)
 }
 
 static void
-core_error(context_t *ctx, struct conn *conn)
+handle_error(server_t *srv, struct conn *conn)
 {
     rstatus_t status;
 
@@ -299,23 +318,23 @@ core_error(context_t *ctx, struct conn *conn)
     }
     conn->err = errno;
 
-    core_close(ctx, conn);
+    handle_close(srv, conn);
 }
 
 static rstatus_t
-core_timer(context_t *ctx)
+handle_timer(server_t *srv)
 {
-    log_debug(LOG_DEBUG, "on core_timer ");
+    log_debug(LOG_DEBUG, "on handle_timer ");
 
     return NC_OK;
 }
 
 static rstatus_t
-core_core(void *arg, uint32_t events)
+handle_event(void *arg, uint32_t events)
 {
     rstatus_t status;
     struct conn *conn = arg;
-    context_t *ctx = conn->owner;
+    server_t *srv = conn->owner;
 
     log_debug(LOG_VVERB, "event %04"PRIX32" on conn:%p fd:%d", events, conn, conn->fd);
 
@@ -323,23 +342,23 @@ core_core(void *arg, uint32_t events)
 
     /* error takes precedence over read | write */
     if (events & EVENT_ERR) {
-        core_error(ctx, conn);
+        handle_error(srv, conn);
         return NC_ERROR;
     }
 
     /* read takes precedence over write */
     if (events & EVENT_READ) {
-        status = core_recv(ctx, conn);
+        status = handle_recv(srv, conn);
         if (status != NC_OK || conn->done || conn->err) {
-            core_close(ctx, conn);
+            handle_close(srv, conn);
             return NC_ERROR;
         }
     }
 
     if (events & EVENT_WRITE) {
-        status = core_send(ctx, conn);
+        status = handle_send(srv, conn);
         if (status != NC_OK || conn->done || conn->err) {
-            core_close(ctx, conn);
+            handle_close(srv, conn);
             return NC_ERROR;
         }
     }
@@ -347,25 +366,3 @@ core_core(void *arg, uint32_t events)
     return NC_OK;
 }
 
-rstatus_t
-core_run(context_t *ctx)
-{
-    int nsd;
-    rstatus_t status;
-
-    status = server_listen(ctx);
-    if (status != NC_OK) {
-        return status;
-    }
-
-    for (;;) {
-        nsd = event_wait(ctx->evb, ctx->ev_timeout);
-        if (nsd < 0) {
-            return NC_ERROR;
-        }
-        core_timer(ctx);
-    }
-
-    NOT_REACHED();
-    return NC_OK;
-}

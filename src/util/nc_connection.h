@@ -25,8 +25,8 @@ typedef rstatus_t (*conn_callback_t)(struct conn*);
 /* TODO: this file need modify */
 struct conn {
     TAILQ_ENTRY(conn)  conn_tqe;            /* link in server_pool / server / free q */
-    void               *owner;              /* connection owner - ctx */
-    void               *data;               /* data in logic layer */
+    void               *owner;              /* connection owner - srv */
+    void               *data;               /* msg in parse */
 
     int                fd;                  /* socket fd */
 

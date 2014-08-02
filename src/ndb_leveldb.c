@@ -6,9 +6,9 @@
 
 #include "ndb_leveldb.h"
 
-static void cmp_destroy(void* arg) { }
+static void _cmp_destroy(void* arg) { }
 
-static int cmp_compare(void* arg, const char* a, size_t alen,
+static int _cmp_compare(void* arg, const char* a, size_t alen,
                       const char* b, size_t blen) {
   int n = (alen < blen) ? alen : blen;
   int r = memcmp(a, b, n);
@@ -19,7 +19,7 @@ static int cmp_compare(void* arg, const char* a, size_t alen,
   return r;
 }
 
-static const char* cmp_name(void* arg) {
+static const char* _cmp_name(void* arg) {
   return "thecmp";
 }
 
@@ -31,7 +31,7 @@ store_init(store_t *s)
     leveldb_readoptions_t       *roptions;
     leveldb_writeoptions_t      *woptions;
 
-    s->cmp = leveldb_comparator_create(NULL, cmp_destroy, cmp_compare, cmp_name);
+    s->cmp = leveldb_comparator_create(NULL, _cmp_destroy, _cmp_compare, _cmp_name);
     s->cache = leveldb_cache_create_lru(s->cache_size);            /* cache size */
     s->env = leveldb_create_default_env();
 
@@ -43,29 +43,30 @@ store_init(store_t *s)
 
     leveldb_options_set_comparator(options, s->cmp);
     leveldb_options_set_create_if_missing(options, 1);
-    /* leveldb_options_set_error_if_exists(options, 1); */
     leveldb_options_set_cache(options, s->cache);
     leveldb_options_set_env(options, s->env);
-    leveldb_options_set_info_log(options, NULL);
+    leveldb_options_set_info_log(options, NULL);            /* no log */
     leveldb_options_set_paranoid_checks(options, 1);
-    leveldb_options_set_max_open_files(options, 10);
+    leveldb_options_set_max_open_files(options, 102400);
 
     leveldb_options_set_block_size(options, s->block_size);          /* block size */
     leveldb_options_set_write_buffer_size(options, s->write_buffer_size); /* buffer size */
 
     leveldb_options_set_block_restart_interval(options, 8);
-    leveldb_options_set_compression(options, leveldb_no_compression);
+    /* assume leveldb_no_compression = 0, leveldb_snappy_compression = 1 */
+    leveldb_options_set_compression(options, s->compression);
 
     s->roptions = roptions = leveldb_readoptions_create();
     if (s->roptions == NULL)
         return NC_ENOMEM;
-    leveldb_readoptions_set_verify_checksums(roptions, 1);
+    leveldb_readoptions_set_verify_checksums(roptions, s->read_verify_checksum);
     leveldb_readoptions_set_fill_cache(roptions, 0);
 
     s->woptions = woptions = leveldb_writeoptions_create();
     if (s->woptions == NULL)
         return NC_ENOMEM;
-    leveldb_writeoptions_set_sync(woptions, 1);
+
+    leveldb_writeoptions_set_sync(woptions, s->write_sync);
 
     /* open db */
     s->db = leveldb_open(s->options, s->dbpath, &err);
@@ -96,7 +97,7 @@ store_deinit(store_t *s)
 }
 
 rstatus_t
-store_get(store_t *s, sds key, sds val)
+store_get(store_t *s, sds key, sds *val)
 {
     char *t;
     size_t val_len;
@@ -110,9 +111,14 @@ store_get(store_t *s, sds key, sds val)
         return NC_ERROR;
     }
 
-    sdscpylen(val, t, val_len);
-    free(t);
-    return NC_OK;
+    if (t != NULL) {
+        *val = sdsnewlen(t, val_len);
+        free(t);
+        return NC_OK;
+    } else {
+        *val = NULL;
+        return NC_OK;
+    }
 }
 
 rstatus_t
@@ -144,3 +150,4 @@ store_del(store_t *s, sds key)
     }
     return NC_OK;
 }
+

@@ -10,9 +10,11 @@
 #include "nc_util.h"
 #include "ndb_msg.h"
 #include "ndb_leveldb.h"
+/* TODO */
+/* #include "ndb_command.h" */
 
 typedef struct instance_s {
-    context_t           ctx;
+    server_t            srv;
     store_t             store;
 
     bool                daemonize;
