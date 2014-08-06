@@ -4,7 +4,7 @@
  * date   : 2014-07-31 08:16:20
  */
 
-#include "ndb_msg.h"
+#include "ndb.h"
 
 static uint64_t msg_id;          /* message id counter */
 

@@ -8,10 +8,9 @@
 #define _NDB_H_
 
 #include "nc_util.h"
-#include "ndb_msg.h"
+#include "ndb_message.h"
 #include "ndb_leveldb.h"
-/* TODO */
-/* #include "ndb_command.h" */
+#include "ndb_command.h"
 
 typedef struct instance_s {
     server_t            srv;

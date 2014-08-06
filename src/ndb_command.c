@@ -4,7 +4,7 @@
  * date   : 2014-08-02 10:23:09
  */
 
-#include "ndb_command.h"
+#include "ndb.h"
 
 static rstatus_t command_process_get(struct conn *conn, msg_t *msg);
 static rstatus_t command_process_set(struct conn *conn, msg_t *msg);

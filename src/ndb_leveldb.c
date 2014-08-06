@@ -4,7 +4,7 @@
  * date   : 2014-08-01 09:30:37
  */
 
-#include "ndb_leveldb.h"
+#include "ndb.h"
 
 static void _cmp_destroy(void* arg) { }
 
