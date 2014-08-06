@@ -7,15 +7,15 @@
 #include "ndb.h"
 
 static uint64_t msg_id;          /* message id counter */
-
-void msg_init(void)
+void
+msg_init(void)
 {
     msg_id = 0;
 }
 
-void msg_deinit(void)
+void
+msg_deinit(void)
 {
-
 }
 
 msg_t *
@@ -72,7 +72,7 @@ msg_read_len(struct conn *conn, uint32_t len)
     s = sdsempty();
 
     mbuf = STAILQ_FIRST(&conn->recv_queue);
-    for (; mbuf ; mbuf = nbuf) {
+    for (; mbuf; mbuf = nbuf) {
         nbuf = STAILQ_NEXT(mbuf, next);
 
         if (mbuf_length(mbuf) > len) {
@@ -116,10 +116,10 @@ msg_read_line(struct conn *conn)
     for (; mbuf; mbuf = nbuf) {
         nbuf = STAILQ_NEXT(mbuf, next);
         for (p = mbuf->pos; p < mbuf->last; p++) {
-            len ++;
+            len++;
             log_debug(LOG_DEBUG, "read *p: %c", *p);
             if (*p == CR) {
-                return msg_read_len(conn, len+1);
+                return msg_read_len(conn, len + 1);
             }
         }
     }
@@ -131,6 +131,7 @@ msg_parse(struct conn *conn)
 {
     sds s;
     msg_t *msg = conn->data;
+
     enum {
         SW_START,
         SW_ARGC,
@@ -143,7 +144,7 @@ msg_parse(struct conn *conn)
     log_debug(LOG_DEBUG, "msg_parse on conn:%p msg:%p", conn, msg);
 
     for (;;) {
-        switch (msg->state){
+        switch (msg->state) {
         case SW_START:
         case SW_ARGC:
             s = msg_read_line(conn);
@@ -155,7 +156,7 @@ msg_parse(struct conn *conn)
             }
 
             msg->state = SW_ARGV_LEN;
-            msg->argc = atoi(s+1);
+            msg->argc = atoi(s + 1);
             msg->argv = nc_zalloc(sizeof(*msg->argv) * msg->argc);
             msg->rargidx = 0;
             sdsfree(s);
@@ -170,7 +171,7 @@ msg_parse(struct conn *conn)
                 goto err;
             }
             msg->state = SW_ARGV;
-            msg->rarglen = atoi(s+1);
+            msg->rarglen = atoi(s + 1);
             sdsfree(s);
             break;
 

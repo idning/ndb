@@ -6,30 +6,37 @@
 
 #include "ndb.h"
 
-static void _cmp_destroy(void* arg) { }
-
-static int _cmp_compare(void* arg, const char* a, size_t alen,
-                      const char* b, size_t blen) {
-  int n = (alen < blen) ? alen : blen;
-  int r = memcmp(a, b, n);
-  if (r == 0) {
-    if (alen < blen) r = -1;
-    else if (alen > blen) r = +1;
-  }
-  return r;
+static void
+_cmp_destroy(void *arg)
+{
 }
 
-static const char* _cmp_name(void* arg) {
-  return "thecmp";
+static int
+_cmp_compare(void *arg, const char *a, size_t alen, const char *b, size_t blen)
+{
+    int n = (alen < blen) ? alen : blen;
+    int r = memcmp(a, b, n);
+
+    if (r == 0) {
+        if (alen < blen) r = -1;
+        else if (alen > blen) r = +1;
+    }
+    return r;
+}
+
+static const char *
+_cmp_name(void *arg)
+{
+    return "thecmp";
 }
 
 rstatus_t
 store_init(store_t *s)
 {
     char *err = NULL;
-    leveldb_options_t           *options;
-    leveldb_readoptions_t       *roptions;
-    leveldb_writeoptions_t      *woptions;
+    leveldb_options_t *options;
+    leveldb_readoptions_t *roptions;
+    leveldb_writeoptions_t *woptions;
 
     s->cmp = leveldb_comparator_create(NULL, _cmp_destroy, _cmp_compare, _cmp_name);
     s->cache = leveldb_cache_create_lru(s->cache_size);            /* cache size */
@@ -37,7 +44,7 @@ store_init(store_t *s)
 
     s->options = options = leveldb_options_create();
     if (s->cmp == NULL || s->cache == NULL ||
-            s->env == NULL || s->options == NULL) {
+        s->env == NULL || s->options == NULL) {
         return NC_ENOMEM;
     }
 
@@ -150,4 +157,3 @@ store_del(store_t *s, sds key)
     }
     return NC_OK;
 }
-

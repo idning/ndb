@@ -17,7 +17,6 @@ typedef struct command_s {
     cmd_process_t   proc;
 } command_t;
 
-
 rstatus_t command_init();
 rstatus_t command_deinit();
 rstatus_t command_process(struct conn* conn, msg_t *msg);

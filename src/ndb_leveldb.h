@@ -38,5 +38,4 @@ rstatus_t store_set(store_t *s, sds key, sds val);
 rstatus_t store_del(store_t *s, sds key);
 
 #endif
-/* vim: set expandtab ts=4 sw=4 sts=4 tw=100: */
 

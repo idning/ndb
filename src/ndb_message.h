@@ -28,4 +28,3 @@ void msg_put(msg_t *msg);
 rstatus_t msg_parse(struct conn *conn);
 
 #endif
-

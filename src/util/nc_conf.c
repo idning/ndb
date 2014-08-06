@@ -9,7 +9,7 @@
 rstatus_t
 nc_conf_init(nc_conf_t *conf, const char *filename)
 {
-    lua_State       *L;
+    lua_State *L;
 
     L = lua_open();   /* opens Lua */
     if (L == NULL) {
@@ -52,15 +52,15 @@ nc_conf_deinit(nc_conf_t *conf)
     return NC_OK;
 }
 
-/**
+/*
  * eval a statement, leave value in the stack
  * like luaL_xxx functions, return 0 on success.
  */
 static int
 _lua_eval(lua_State *L, const char *expr)
 {
-    char       *buf;
-    int         status;
+    char *buf;
+    int status;
 
     buf = nc_alloc(strlen(expr) + sizeof("return "));
     strcpy(buf, "return ");
@@ -93,9 +93,9 @@ out:
 char *
 nc_conf_get_str(nc_conf_t *conf, const char *name, char *default_value)
 {
-    rstatus_t         status;
-    char             *ret;
-    lua_State        *L = conf->L;
+    rstatus_t status;
+    char *ret;
+    lua_State *L = conf->L;
 
     status = _lua_eval(L, name);
     if (status) {
@@ -121,9 +121,9 @@ out:
 int
 nc_conf_get_num(nc_conf_t *conf, const char *name, int default_value)
 {
-    rstatus_t        status;
-    int              ret;
-    lua_State       *L = conf->L;
+    rstatus_t status;
+    int ret;
+    lua_State *L = conf->L;
 
     status = _lua_eval(L, name);
     if (status) {

@@ -13,10 +13,10 @@ static rstatus_t command_process_ping(struct conn *conn, msg_t *msg);
 /* rstatus_t command_process_expire(struct conn* conn, msg_t *msg); */
 
 static command_t command_table[] = {
-    {"get",     2, command_process_get},
-    {"set",     3, command_process_set},
-    {"del",     2, command_process_del},
-    {"ping",    1, command_process_ping},
+    { "get",  2, command_process_get  },
+    { "set",  3, command_process_set  },
+    { "del",  2, command_process_del  },
+    { "ping", 1, command_process_ping },
     /* {"expire",  3, command_process_expire}, */
 };
 
@@ -36,7 +36,7 @@ static command_t *
 command_lookup(char *name)
 {
     uint32_t i;
-    uint32_t ncommands = sizeof(command_table)/sizeof(*command_table);
+    uint32_t ncommands = sizeof(command_table) / sizeof(*command_table);
 
     for (i = 0; i < ncommands; i++) {
         if (strcmp(command_table[i].name, name) == 0) {
@@ -48,38 +48,38 @@ command_lookup(char *name)
 }
 
 static rstatus_t
-command_reply_ok(struct conn* conn)
+command_reply_ok(struct conn *conn)
 {
     return conn_sendq_append(conn, "+OK\r\n", 5);
 }
 
 static rstatus_t
-command_reply_str(struct conn* conn, char *str)
+command_reply_str(struct conn *conn, char *str)
 {
     uint32_t len = strlen(str);
 
     ASSERT(str[0] == '+');
-    ASSERT(str[len-1] == '\n');
+    ASSERT(str[len - 1] == '\n');
     return conn_sendq_append(conn, str, strlen(str));
 }
 
 static rstatus_t
-command_reply_err(struct conn* conn, char *str)
+command_reply_err(struct conn *conn, char *str)
 {
     uint32_t len = strlen(str);
 
-    ASSERT(*str== '-');
-    ASSERT(str[len-1] == '\n');
+    ASSERT(*str == '-');
+    ASSERT(str[len - 1] == '\n');
     return conn_sendq_append(conn, str, strlen(str));
 }
 
-/**
+/*
  * prefix is one char, can be *|$|:
  */
 static rstatus_t
-_command_reply_uint(struct conn* conn, char prefix, uint64_t val)
+_command_reply_uint(struct conn *conn, char prefix, uint64_t val)
 {
-    char buf[NC_UINT64_MAXLEN+1+2];
+    char buf[NC_UINT64_MAXLEN + 1 + 2];
     int len;
 
     len = nc_snprintf(buf, sizeof(buf), "%c%"PRIu64"\r\n", prefix, val);
@@ -87,7 +87,7 @@ _command_reply_uint(struct conn* conn, char prefix, uint64_t val)
 }
 
 static rstatus_t
-command_reply_bluk(struct conn* conn, char *msg, size_t n)
+command_reply_bluk(struct conn *conn, char *msg, size_t n)
 {
     rstatus_t status;
 
@@ -107,7 +107,7 @@ command_reply_bluk(struct conn* conn, char *msg, size_t n)
 }
 
 static rstatus_t
-command_reply_empty_bluk(struct conn* conn)
+command_reply_empty_bluk(struct conn *conn)
 {
     return conn_sendq_append(conn, "$-1\r\n", 5);
 }
@@ -117,15 +117,14 @@ command_reply_empty_bluk(struct conn* conn)
 /* { */
     /* return _command_reply_uint(conn, '*', n); */
 /* } */
-
 static rstatus_t
-command_reply_num(struct conn* conn, uint32_t n)
+command_reply_num(struct conn *conn, uint32_t n)
 {
     return _command_reply_uint(conn, ':', n);
 }
 
 rstatus_t
-command_process(struct conn* conn, msg_t *msg)
+command_process(struct conn *conn, msg_t *msg)
 {
     sds name = msg->argv[0];
     rstatus_t status;
@@ -147,7 +146,7 @@ command_process(struct conn* conn, msg_t *msg)
 }
 
 static rstatus_t
-command_process_set(struct conn* conn, msg_t *msg)
+command_process_set(struct conn *conn, msg_t *msg)
 {
     rstatus_t status;
     server_t *srv = conn->owner;
@@ -165,7 +164,7 @@ command_process_set(struct conn* conn, msg_t *msg)
 }
 
 static rstatus_t
-command_process_get(struct conn* conn, msg_t *msg)
+command_process_get(struct conn *conn, msg_t *msg)
 {
     rstatus_t status;
     server_t *srv = conn->owner;
@@ -189,7 +188,7 @@ command_process_get(struct conn* conn, msg_t *msg)
 }
 
 static rstatus_t
-command_process_del(struct conn* conn, msg_t *msg)
+command_process_del(struct conn *conn, msg_t *msg)
 {
     rstatus_t status;
     server_t *srv = conn->owner;
@@ -206,8 +205,7 @@ command_process_del(struct conn* conn, msg_t *msg)
 }
 
 static rstatus_t
-command_process_ping(struct conn* conn, msg_t *msg)
+command_process_ping(struct conn *conn, msg_t *msg)
 {
     return command_reply_str(conn, "+PONG\r\n");
 }
-

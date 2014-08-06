@@ -75,7 +75,7 @@ _conn_get(void)
 }
 
 struct conn *
-conn_get(void * owner)
+conn_get(void *owner)
 {
     struct conn *conn;
 
@@ -148,7 +148,7 @@ conn_recv_buf(struct conn *conn, void *buf, size_t size)
         log_debug(LOG_VERB, "recv on conn:%p, fd:%d got %zd/%zu", conn, conn->fd, n, size);
 
         if (n > 0) {
-            if (n < (ssize_t) size) {
+            if (n < (ssize_t)size) {
                 conn->recv_ready = 0;
             }
             conn->recv_bytes += (size_t)n;
@@ -184,9 +184,9 @@ conn_recv_buf(struct conn *conn, void *buf, size_t size)
 }
 
 static rstatus_t
-conn_recv_queue(struct conn* conn)
+conn_recv_queue(struct conn *conn)
 {
-    struct mbuf * mbuf;
+    struct mbuf *mbuf;
     size_t msize;         /* current mbuf size */
     ssize_t n;
 
@@ -249,7 +249,7 @@ conn_send_buf(struct conn *conn, void *buf, size_t size)
                   conn->fd, n, size);
 
         if (n > 0) {
-            if (n < (ssize_t) size) {
+            if (n < (ssize_t)size) {
                 conn->send_ready = 0;
             }
             conn->send_bytes += (size_t)n;
@@ -285,11 +285,11 @@ conn_send_buf(struct conn *conn, void *buf, size_t size)
 static rstatus_t
 conn_send_queue(struct conn *conn)
 {
-    struct mbuf *mbuf, *nbuf;            /* current and next mbuf */
-    size_t mlen;                         /* current mbuf data length */
+    struct mbuf *mbuf, *nbuf;                   /* current and next mbuf */
+    size_t mlen;                                /* current mbuf data length */
     ssize_t n;
 
-    for (mbuf = STAILQ_FIRST(&conn->send_queue); mbuf != NULL ; mbuf = nbuf) {
+    for (mbuf = STAILQ_FIRST(&conn->send_queue); mbuf != NULL; mbuf = nbuf) {
         nbuf = STAILQ_NEXT(mbuf, next);
 
         if (mbuf_empty(mbuf)) {
@@ -336,7 +336,6 @@ conn_send(struct conn *conn)
         if (status != NC_OK) {
             return status;
         }
-
     } while (conn->send_ready);
 
     return NC_OK;
@@ -366,18 +365,18 @@ conn_close(struct conn *conn)
         return NC_OK;
     }
 
-    if (! STAILQ_EMPTY(&conn->recv_queue)) {
+    if (!STAILQ_EMPTY(&conn->recv_queue)) {
         log_debug(LOG_WARN, "close conn %d discard data in send_queue", conn->fd);
-        for (mbuf = STAILQ_FIRST(&conn->recv_queue); mbuf != NULL ; mbuf = nbuf) {
+        for (mbuf = STAILQ_FIRST(&conn->recv_queue); mbuf != NULL; mbuf = nbuf) {
             nbuf = STAILQ_NEXT(mbuf, next);
             mbuf_remove(&conn->recv_queue, mbuf);
             mbuf_put(mbuf);
         }
     }
 
-    if (! STAILQ_EMPTY(&conn->send_queue)) {
+    if (!STAILQ_EMPTY(&conn->send_queue)) {
         log_debug(LOG_WARN, "close conn %d discard data in send_queue", conn->fd);
-        for (mbuf = STAILQ_FIRST(&conn->send_queue); mbuf != NULL ; mbuf = nbuf) {
+        for (mbuf = STAILQ_FIRST(&conn->send_queue); mbuf != NULL; mbuf = nbuf) {
             nbuf = STAILQ_NEXT(mbuf, next);
             mbuf_remove(&conn->send_queue, mbuf);
             mbuf_put(mbuf);
@@ -427,7 +426,7 @@ conn_sendq_append(struct conn *conn, char *pos, size_t n)
         len = MIN(mbuf_size(mbuf), n - bytes);
         mbuf_copy(mbuf, pos + bytes, len);
         bytes += len;
-    };
+    }
 
     return NC_OK;
 }

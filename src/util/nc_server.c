@@ -155,7 +155,7 @@ server_listen(server_t *srv)
     if (port != NULL) {
         host = srv->listen;
         *port = '\0';
-        port ++;
+        port++;
     } else {  /* no ':' found */
         host = NULL;
         port = srv->listen;
@@ -314,7 +314,7 @@ handle_error(server_t *srv, struct conn *conn)
     status = nc_get_soerror(conn->fd);
     if (status < 0) {
         log_warn("get soerr on conn:%p fd:%d failed, ignored: %s", conn, conn->fd,
-                  strerror(errno));
+                 strerror(errno));
     }
     conn->err = errno;
 
@@ -365,4 +365,3 @@ handle_event(void *arg, uint32_t events)
 
     return NC_OK;
 }
-

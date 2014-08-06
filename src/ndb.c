@@ -71,8 +71,8 @@ ndb_get_options(int argc, const char **argv, instance_t *instance)
 
         default:
             log_stderr("ndb: invalid option -- '%c'", optopt);
-            return NC_ERROR;
 
+            return NC_ERROR;
         }
     }
 
@@ -95,37 +95,36 @@ ndb_print_done(instance_t *instance)
 }
 
 #define K *1024
-#define M *1024*1024
+#define M *1024 * 1024
 
 static rstatus_t
 ndb_load_conf(instance_t *instance)
 {
     rstatus_t status;
+
     status = nc_conf_init(&instance->conf, instance->configfile);
     if (status != NC_OK) {
         return status;
     }
 
-    instance->daemonize = nc_conf_get_num(&instance->conf, "daemonize", false);
-    instance->loglevel  = nc_conf_get_num(&instance->conf, "loglevel", LOG_NOTICE);
-    instance->logfile   = nc_conf_get_str(&instance->conf, "logfile", "log/ndb.log");
-
-    instance->srv.listen    = nc_conf_get_str(&instance->conf, "listen", "0.0.0.0:5527");
-    instance->srv.backlog   = nc_conf_get_num(&instance->conf, "backlog", 1024);
-    instance->srv.mbuf_size = nc_conf_get_num(&instance->conf, "mbuf_size", 512);
-
-    instance->store.dbpath     = nc_conf_get_str(&instance->conf, "leveldb.dbpath", "db");
-    instance->store.block_size = nc_conf_get_num(&instance->conf, "leveldb.block_size", 32 K);
-    instance->store.cache_size = nc_conf_get_num(&instance->conf, "leveldb.cache_size", 1 M);
-    instance->store.write_buffer_size = nc_conf_get_num(&instance->conf, "leveldb.write_buffer_size", 1 M);
-
-    instance->store.compression = nc_conf_get_num(&instance->conf, "leveldb.compression", 0);
-
+    /* TODO: check invalid value */
+    instance->daemonize                  = nc_conf_get_num(&instance->conf, "daemonize", false);
+    instance->loglevel                   = nc_conf_get_num(&instance->conf, "loglevel", LOG_NOTICE);
+    instance->logfile                    = nc_conf_get_str(&instance->conf, "logfile", "log/ndb.log");
+    instance->srv.listen                 = nc_conf_get_str(&instance->conf, "listen", "0.0.0.0:5527");
+    instance->srv.backlog                = nc_conf_get_num(&instance->conf, "backlog", 1024);
+    instance->srv.mbuf_size              = nc_conf_get_num(&instance->conf, "mbuf_size", 512);
+    instance->store.dbpath               = nc_conf_get_str(&instance->conf, "leveldb.dbpath", "db");
+    instance->store.block_size           = nc_conf_get_num(&instance->conf, "leveldb.block_size", 32 K);
+    instance->store.cache_size           = nc_conf_get_num(&instance->conf, "leveldb.cache_size", 1 M);
+    instance->store.write_buffer_size    = nc_conf_get_num(&instance->conf, "leveldb.write_buffer_size", 1 M);
+    instance->store.compression          = nc_conf_get_num(&instance->conf, "leveldb.compression", 0);
     instance->store.read_verify_checksum = nc_conf_get_num(&instance->conf, "leveldb.read_verify_checksum", 0);
-    instance->store.write_sync = nc_conf_get_num(&instance->conf, "leveldb.write_sync", 0);
+    instance->store.write_sync           = nc_conf_get_num(&instance->conf, "leveldb.write_sync", 0);
 
     return NC_OK;
 }
+
 #undef K
 #undef M
 
@@ -140,10 +139,11 @@ ndb_process_msg(struct conn *conn, msg_t *msg)
     }
 
     log_debug(LOG_INFO, "ndb_process_msg: %"PRIu64" argc=%d, cmd=%s", msg->id,
-            msg->argc, msg->argv[0]);
+              msg->argc, msg->argv[0]);
 
     status = command_process(conn, msg);
-    if (status != NC_OK) { /* TODO: nothing can come here */
+    /* TODO: nothing can come here */
+    if (status != NC_OK) {
         log_debug(LOG_INFO, "something error in command_process ");
         return NC_ERROR;
     }
@@ -178,7 +178,6 @@ ndb_conn_recv_done(struct conn *conn)
             conn->err = errno;
             conn_add_out(conn);
         } else if (status == NC_EAGAIN) {
-
             conn_add_in(conn);
             break;
         }
@@ -291,7 +290,8 @@ main(int argc, const char **argv)
 
     status = ndb_load_conf(&instance);
     if (status != NC_OK) {
-        log_stderr("ndb: configuration file '%s' syntax is invalid", instance.configfile);
+        log_stderr("ndb: configuration file '%s' syntax is invalid",
+                   instance.configfile);
         exit(1);
     }
 
@@ -310,4 +310,3 @@ main(int argc, const char **argv)
     ndb_deinit(&instance);
     exit(1);
 }
-
