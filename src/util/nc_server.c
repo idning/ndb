@@ -30,6 +30,7 @@ server_deinit(server_t *srv)
     return NC_OK;
 }
 
+/* TODO: rename p=>conn */
 static rstatus_t
 server_accept(struct conn *p)
 {
@@ -60,6 +61,7 @@ server_accept(struct conn *p)
              */
             if (errno == EMFILE || errno == ENFILE) {
                 log_error("accept on p %d failed - enfile, we will ignore this fd", p->fd);
+                p->recv_ready = 0;
                 return NC_OK;
             }
 

@@ -146,6 +146,7 @@ ndb_conn_recv_done(struct conn *conn)
         if (status == NC_ERROR) {
             conn->err = errno;
             conn_add_out(conn);
+            break;
         } else if (status == NC_EAGAIN) {
             conn_add_in(conn);
             break;
