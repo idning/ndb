@@ -36,6 +36,7 @@ rstatus_t store_deinit(store_t *s);
 rstatus_t store_get(store_t *s, sds key, sds *val);
 rstatus_t store_set(store_t *s, sds key, sds val);
 rstatus_t store_del(store_t *s, sds key);
+rstatus_t store_compact(store_t *s);
 
 #endif
 

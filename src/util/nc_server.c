@@ -1,7 +1,5 @@
 #include "nc_server.h"
 
-/* TODO: rename => srv_init */
-
 static rstatus_t handle_event(void *arg, uint32_t events);
 static rstatus_t handle_timer(server_t *srv);
 

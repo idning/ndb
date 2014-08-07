@@ -7,12 +7,15 @@
 #ifndef _NDB_H_
 #define _NDB_H_
 
+typedef struct instance_s instance_t;
+
 #include "nc_util.h"
 #include "ndb_message.h"
 #include "ndb_leveldb.h"
 #include "ndb_command.h"
+#include "ndb_job.h"
 
-typedef struct instance_s {
+struct instance_s {
     server_t            srv;
     store_t             store;
 
@@ -23,7 +26,7 @@ typedef struct instance_s {
 
     char                *configfile;                /* configuration filename */
     nc_conf_t           conf;
-} instance_t;
+};
 
 #endif
 

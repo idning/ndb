@@ -10,13 +10,15 @@ static rstatus_t command_process_get(struct conn *conn, msg_t *msg);
 static rstatus_t command_process_set(struct conn *conn, msg_t *msg);
 static rstatus_t command_process_del(struct conn *conn, msg_t *msg);
 static rstatus_t command_process_ping(struct conn *conn, msg_t *msg);
+static rstatus_t command_process_compact(struct conn *conn, msg_t *msg);
 /* rstatus_t command_process_expire(struct conn* conn, msg_t *msg); */
 
 static command_t command_table[] = {
-    { "get",  2, command_process_get  },
-    { "set",  3, command_process_set  },
-    { "del",  2, command_process_del  },
-    { "ping", 1, command_process_ping },
+    { "get",      2, command_process_get  },
+    { "set",      3, command_process_set  },
+    { "del",      2, command_process_del  },
+    { "ping",     1, command_process_ping },
+    { "compact",  1, command_process_compact },
     /* {"expire",  3, command_process_expire}, */
 };
 
@@ -126,15 +128,22 @@ command_reply_num(struct conn *conn, uint32_t n)
 rstatus_t
 command_process(struct conn *conn, msg_t *msg)
 {
-    sds name = msg->argv[0];
+    sds name;
     rstatus_t status;
 
+    ASSERT(msg != NULL);
+    ASSERT(msg->argc > 0);
+
+    name = msg->argv[0];
     sdstolower(name);
     command_t *cmd = command_lookup(name);
 
     if (cmd == NULL) {
         return command_reply_err(conn, "-ERR can not find command\r\n");
     }
+
+    log_debug(LOG_INFO, "ndb_process_msg: %"PRIu64" argc=%d, cmd=%s", msg->id,
+              msg->argc, msg->argv[0]);
 
     status = cmd->proc(conn, msg);
     if (status != NC_OK) {                  /* store engine error will got here */
@@ -200,7 +209,7 @@ command_process_del(struct conn *conn, msg_t *msg)
         return status;
     }
 
-    /* TODO: we do not know  if we success */
+    /* TODO: we do not know if we success */
     return command_reply_num(conn, 1);
 }
 
@@ -208,4 +217,20 @@ static rstatus_t
 command_process_ping(struct conn *conn, msg_t *msg)
 {
     return command_reply_str(conn, "+PONG\r\n");
+}
+
+static rstatus_t
+command_process_compact(struct conn *conn, msg_t *msg)
+{
+    rstatus_t status;
+    server_t *srv = conn->owner;
+    instance_t *instance = srv->owner;
+
+    status = job_signal(JOB_COMPACT);
+    if (status == NC_OK) {
+        return command_reply_ok(conn);
+    } else {
+        return command_reply_err(conn, "-ERR compact already running\r\n");
+    }
+    /* store_compact(&instance->store); */
 }

@@ -52,12 +52,11 @@ store_init(store_t *s)
     leveldb_options_set_create_if_missing(options, 1);
     leveldb_options_set_cache(options, s->cache);
     leveldb_options_set_env(options, s->env);
-    leveldb_options_set_info_log(options, NULL);            /* no log */
+    leveldb_options_set_info_log(options, NULL);                            /* no log */
     leveldb_options_set_paranoid_checks(options, 1);
     leveldb_options_set_max_open_files(options, 102400);
-
-    leveldb_options_set_block_size(options, s->block_size);          /* block size */
-    leveldb_options_set_write_buffer_size(options, s->write_buffer_size); /* buffer size */
+    leveldb_options_set_block_size(options, s->block_size);                 /* block size */
+    leveldb_options_set_write_buffer_size(options, s->write_buffer_size);   /* buffer size */
 
     leveldb_options_set_block_restart_interval(options, 8);
     /* assume leveldb_no_compression = 0, leveldb_snappy_compression = 1 */
@@ -157,3 +156,11 @@ store_del(store_t *s, sds key)
     }
     return NC_OK;
 }
+
+rstatus_t
+store_compact(store_t *s)
+{
+    leveldb_compact_range(s->db, NULL, 0, NULL, 0);
+    return NC_OK;
+}
+

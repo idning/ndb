@@ -128,32 +128,6 @@ ndb_load_conf(instance_t *instance)
 #undef K
 #undef M
 
-rstatus_t
-ndb_process_msg(struct conn *conn, msg_t *msg)
-{
-    rstatus_t status;
-
-    if (msg->argc <= 0) {
-        log_debug(LOG_INFO, "bad msg with msg->argc<=0");
-        return NC_ERROR;
-    }
-
-    log_debug(LOG_INFO, "ndb_process_msg: %"PRIu64" argc=%d, cmd=%s", msg->id,
-              msg->argc, msg->argv[0]);
-
-    status = command_process(conn, msg);
-    /* TODO: nothing can come here */
-    if (status != NC_OK) {
-        log_debug(LOG_INFO, "something error in command_process ");
-        return NC_ERROR;
-    }
-
-    msg_put(msg);
-    conn->data = NULL;
-
-    return NC_OK;
-}
-
 static rstatus_t
 ndb_conn_recv_done(struct conn *conn)
 {
@@ -169,17 +143,22 @@ ndb_conn_recv_done(struct conn *conn)
         status = msg_parse(conn);
         log_debug(LOG_INFO, "msg_parse on conn %p return %d", conn, status);
 
-        if (status == NC_OK) {
-            /* TODO: check return */
-            ndb_process_msg(conn, conn->data);
-            conn->data = NULL;
-            conn_add_out(conn);
-        } else if (status == NC_ERROR) {
+        if (status == NC_ERROR) {
             conn->err = errno;
             conn_add_out(conn);
         } else if (status == NC_EAGAIN) {
             conn_add_in(conn);
             break;
+        }
+
+        /* got a msg here */
+        status = command_process(conn, conn->data);
+        msg_put(conn->data);
+        conn->data = NULL;
+        conn_add_out(conn);
+        if (status != NC_OK) {
+            conn->err = errno;
+            return status;
         }
     }
     return NC_OK;
@@ -190,6 +169,7 @@ ndb_conn_send_done(struct conn *conn)
 {
     log_debug(LOG_INFO, "conn_send_done on conn: %p", conn);
 
+    /* TODO: idle and timeout */
     /* renable in */
     return conn_add_in(conn);
 }
@@ -244,6 +224,11 @@ ndb_init(instance_t *instance)
     }
     instance->srv.owner = instance;
 
+    status = job_init(instance);
+    if (status != NC_OK) {
+        return status;
+    }
+
     ndb_print_run(instance);
 
     return NC_OK;
@@ -252,6 +237,9 @@ ndb_init(instance_t *instance)
 static rstatus_t
 ndb_deinit(instance_t *instance)
 {
+
+    job_deinit();
+
     signal_deinit();
 
     msg_deinit();

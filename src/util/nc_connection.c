@@ -229,8 +229,7 @@ conn_recv(struct conn *conn)
     } while (conn->recv_ready);
 
     /* callback */
-    conn->recv_done(conn);
-    return NC_OK;
+    return conn->recv_done(conn);
 }
 
 static ssize_t
@@ -319,8 +318,7 @@ conn_send_queue(struct conn *conn)
     }
 
     conn->send_ready = 0;
-    conn->send_done(conn);
-    return NC_OK;
+    return conn->send_done(conn);
 }
 
 rstatus_t
