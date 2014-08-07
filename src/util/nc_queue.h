@@ -404,20 +404,20 @@ struct {                                                                \
 #define QMD_LIST_CHECK_HEAD(head, field) do {                               \
     if (LIST_FIRST((head)) != NULL &&                                       \
         LIST_FIRST((head))->field.le_prev != &LIST_FIRST((head))) {         \
-        log_panic("Bad list head %p first->prev != head", (void *)(head));  \
+        log_error("Bad list head %p first->prev != head", (void *)(head));  \
     }                                                                       \
 } while (0)
 
 #define QMD_LIST_CHECK_NEXT(elm, field) do {                                \
     if (LIST_NEXT((elm), field) != NULL &&                                  \
         LIST_NEXT((elm), field)->field.le_prev != &((elm)->field.le_next)) {\
-        log_panic("Bad link elm %p next->prev != elm",(void *)(elm));       \
+        log_error("Bad link elm %p next->prev != elm",(void *)(elm));       \
     }                                                                       \
 } while (0)
 
 #define QMD_LIST_CHECK_PREV(elm, field) do {                            \
     if (*(elm)->field.le_prev != (elm)) {                               \
-        log_panic("Bad link elm %p prev->next != elm",(void *)(elm));   \
+        log_error("Bad link elm %p prev->next != elm",(void *)(elm));   \
     }                                                                   \
 } while (0)
 
@@ -525,26 +525,26 @@ struct {                                                                \
 #define QMD_TAILQ_CHECK_HEAD(head, field) do {                              \
     if (!TAILQ_EMPTY(head) &&                                               \
         TAILQ_FIRST((head))->field.tqe_prev != &TAILQ_FIRST((head))) {      \
-        log_panic("Bad tailq head %p first->prev != head", (void *)(head)); \
+        log_error("Bad tailq head %p first->prev != head", (void *)(head)); \
     }                                                                       \
 } while (0)
 
 #define QMD_TAILQ_CHECK_TAIL(head, field) do {                              \
     if (*(head)->tqh_last != NULL) {                                        \
-        log_panic("Bad tailq NEXT(%p->tqh_last) != NULL",(void *)(head));   \
+        log_error("Bad tailq NEXT(%p->tqh_last) != NULL",(void *)(head));   \
     }                                                                       \
 } while (0)
 
 #define QMD_TAILQ_CHECK_NEXT(elm, field) do {                               \
     if (TAILQ_NEXT((elm), field) != NULL &&                                 \
         TAILQ_NEXT((elm), field)->field.tqe_prev != &((elm)->field.tqe_next)) {\
-        log_panic("Bad link elm %p next->prev != elm",(void *)(elm));       \
+        log_error("Bad link elm %p next->prev != elm",(void *)(elm));       \
     }                                                                       \
 } while (0)
 
 #define QMD_TAILQ_CHECK_PREV(elm, field) do {                           \
     if (*(elm)->field.tqe_prev != (elm)) {                              \
-        log_panic("Bad link elm %p prev->next != elm",(void *)(elm));   \
+        log_error("Bad link elm %p prev->next != elm",(void *)(elm));   \
     }                                                                   \
 } while (0)
 

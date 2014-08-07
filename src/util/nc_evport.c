@@ -61,7 +61,7 @@ event_base_create(int nevent, event_cb_t cb)
     evb->nevent = nevent;
     evb->cb = cb;
 
-    log_debug(LOG_INFO, "evp %d with nevent %d", evb->evp, evb->nevent);
+    log_info("evp %d with nevent %d", evb->evp, evb->nevent);
 
     return evb;
 }
@@ -294,7 +294,7 @@ event_wait(struct event_base *evb, int timeout)
                 port_event_t *ev = &evb->event[i];
                 uint32_t events = 0;
 
-                log_debug(LOG_VVERB, "port %04"PRIX32" from source %d "
+                log_verb("port %04"PRIX32" from source %d "
                           "triggered on conn %p", ev->portev_events,
                           ev->portev_source, ev->portev_user);
 

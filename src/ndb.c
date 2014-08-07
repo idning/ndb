@@ -133,7 +133,7 @@ ndb_conn_recv_done(struct conn *conn)
 {
     rstatus_t status;
 
-    log_debug(LOG_INFO, "conn_recv_done on conn: %p", conn);
+    log_info("conn_recv_done on conn: %p", conn);
 
     for (;;) {
         if (conn->data == NULL) {
@@ -141,7 +141,7 @@ ndb_conn_recv_done(struct conn *conn)
         }
 
         status = msg_parse(conn);
-        log_debug(LOG_INFO, "msg_parse on conn %p return %d", conn, status);
+        log_info("msg_parse on conn %p return %d", conn, status);
 
         if (status == NC_ERROR) {
             conn->err = errno;
@@ -167,7 +167,7 @@ ndb_conn_recv_done(struct conn *conn)
 static rstatus_t
 ndb_conn_send_done(struct conn *conn)
 {
-    log_debug(LOG_INFO, "conn_send_done on conn: %p", conn);
+    log_info("conn_send_done on conn: %p", conn);
 
     /* TODO: idle and timeout */
     /* renable in */
@@ -177,7 +177,7 @@ ndb_conn_send_done(struct conn *conn)
 rstatus_t
 ndb_conn_accept_done(struct conn *conn)
 {
-    log_debug(LOG_INFO, "conn_accept_done on conn: %p", conn);
+    log_info("conn_accept_done on conn: %p", conn);
 
     conn->recv_done = ndb_conn_recv_done;
     conn->send_done = ndb_conn_send_done;

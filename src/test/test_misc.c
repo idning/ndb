@@ -77,9 +77,9 @@ test_log()
     log_reopen(); /* create new file */
 
     loga("1. loga");
-    log_debug(LOG_DEBUG, "2. debug log");
-    log_debug(LOG_NOTICE, "3. notice log");
-    log_debug(LOG_WARN, "4. warn log");
+    log_debug("2. debug log");
+    log_notice("3. notice log");
+    log_warn("4. warn log");
 
     f = fopen(log_file, "r");
     if (f == NULL) {

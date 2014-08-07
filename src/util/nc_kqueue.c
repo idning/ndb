@@ -75,7 +75,7 @@ event_base_create(int nevent, event_cb_t cb)
     evb->nprocessed = 0;
     evb->cb = cb;
 
-    log_debug(LOG_INFO, "kq %d with nevent %d", evb->kq, evb->nevent);
+    log_info("kq %d with nevent %d", evb->kq, evb->nevent);
 
     return evb;
 }
@@ -279,7 +279,7 @@ event_wait(struct event_base *evb, int timeout)
                 struct kevent *ev = &evb->event[evb->nprocessed];
                 uint32_t events = 0;
 
-                log_debug(LOG_VVERB, "kevent %04"PRIX32" with filter %d "
+                log_verb("kevent %04"PRIX32" with filter %d "
                           "triggered on sd %d", ev->flags, ev->filter,
                           ev->ident);
 

@@ -39,10 +39,10 @@ job_signal(job_type_t type)
 
     pthread_mutex_lock(&job->mutex);
     if (job->running) {
-        log_debug(LOG_DEBUG, "job %d is runnging", job->type);
+        log_debug("job %d is runnging", job->type);
         status = NC_ERROR;
     } else {
-        log_debug(LOG_DEBUG, "job %d is not runnging, we signal it", job->type);
+        log_debug("job %d is not runnging, we signal it", job->type);
         pthread_cond_signal(&job->cond);
     }
     pthread_mutex_unlock(&job->mutex);
@@ -64,9 +64,9 @@ job_run_compact(job_t *job)
     rstatus_t status;
     instance_t *instance = job->owner;
 
-    log_debug(LOG_INFO, "job_run_compact started");
+    log_info("job_run_compact started");
     status = store_compact(&instance->store);
-    log_debug(LOG_INFO, "job_run_compact ended");
+    log_info("job_run_compact ended");
 
     return status;
 }
@@ -117,7 +117,7 @@ job_create(instance_t *instance, job_type_t type)
 
     pthread_attr_init(&job->attr);
     if (pthread_create(&job->thread, &job->attr, job_run, job) != 0) {
-        log_debug(LOG_WARN, "can not create thread!");
+        log_error("can not create thread!");
         return NULL;
     }
 
@@ -131,13 +131,13 @@ static job_destory(job_t *job)
 
     ret = pthread_cancel(job->thread);
     if (ret != 0) {
-        log_debug(LOG_WARN, "can not cancel thread %d ret: %d", job->type, ret);
+        log_warn("can not cancel thread %d ret: %d", job->type, ret);
         goto done;
     }
 
     ret = pthread_join(job->thread, NULL);
     if (ret != 0) {
-        log_debug(LOG_WARN, "can not join thread %d ret: %d", job->type, ret);
+        log_warn("can not join thread %d ret: %d", job->type, ret);
         goto done;
     }
 

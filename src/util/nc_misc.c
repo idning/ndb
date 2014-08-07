@@ -209,7 +209,7 @@ _nc_alloc(size_t size, const char *name, int line)
     if (p == NULL) {
         log_error("malloc(%zu) failed @ %s:%d", size, name, line);
     } else {
-        log_debug(LOG_VVERB, "malloc(%zu) at %p @ %s:%d", size, p, name, line);
+        log_verb("malloc(%zu) at %p @ %s:%d", size, p, name, line);
     }
 
     return p;
@@ -245,7 +245,7 @@ _nc_realloc(void *ptr, size_t size, const char *name, int line)
     if (p == NULL) {
         log_error("realloc(%zu) failed @ %s:%d", size, name, line);
     } else {
-        log_debug(LOG_VVERB, "realloc(%zu) at %p @ %s:%d", size, p, name, line);
+        log_verb("realloc(%zu) at %p @ %s:%d", size, p, name, line);
     }
 
     return p;
@@ -255,7 +255,7 @@ void
 _nc_free(void *ptr, const char *name, int line)
 {
     ASSERT(ptr != NULL);
-    log_debug(LOG_VVERB, "free(%p) @ %s:%d", ptr, name, line);
+    log_verb("free(%p) @ %s:%d", ptr, name, line);
     free(ptr);
 }
 

@@ -45,12 +45,12 @@ server_accept(struct conn *p)
         fd = accept(p->fd, NULL, NULL);
         if (fd < 0) {
             if (errno == EINTR) {
-                log_debug(LOG_VERB, "accept on p %d not ready - eintr", p->fd);
+                log_verb("accept on p %d not ready - eintr", p->fd);
                 continue;
             }
 
             if (errno == EAGAIN || errno == EWOULDBLOCK || errno == ECONNABORTED) {
-                log_debug(LOG_VERB, "accept on p %d not ready - eagain", p->fd);
+                log_verb("accept on p %d not ready - eagain", p->fd);
                 p->recv_ready = 0;
                 return NC_OK;
             }
@@ -59,7 +59,7 @@ server_accept(struct conn *p)
              * On EMFILE or ENFILE mask out IN event on the proxy;
              */
             if (errno == EMFILE || errno == ENFILE) {
-                log_debug(LOG_ERR, "accept on p %d failed - enfile, we will ignore this fd", p->fd);
+                log_error("accept on p %d failed - enfile, we will ignore this fd", p->fd);
                 return NC_OK;
             }
 
@@ -70,7 +70,7 @@ server_accept(struct conn *p)
         break;
     }
 
-    log_debug(LOG_DEBUG, "accept on p %d got fd: %d", p->fd, fd);
+    log_debug("accept on p %d got fd: %d", p->fd, fd);
 
     c = conn_get(srv);
     if (c == NULL) {
@@ -114,7 +114,7 @@ server_accept(struct conn *p)
         return status;
     }
 
-    log_debug(LOG_NOTICE, "accepted c %d on p %d from '%s'", c->fd, p->fd,
+    log_debug("accepted c %d on p %d from '%s'", c->fd, p->fd,
               nc_unresolve_peer_desc(c->fd));
 
     return NC_OK;
@@ -210,7 +210,6 @@ server_listen(server_t *srv)
     conn->fd = fd;
     conn->recv = server_recv;
     conn->send = NULL;
-    conn->send = close;
 
     status = event_add_conn(srv->evb, conn);
     if (status < 0) {
@@ -226,7 +225,7 @@ server_listen(server_t *srv)
         return NC_ERROR;
     }
 
-    log_debug(LOG_NOTICE, "server listening on s port %s fd %d", port, conn->fd);
+    log_notice("server listening on s port %s fd %d", port, conn->fd);
 
     freeaddrinfo(res);
     return NC_OK;
@@ -262,7 +261,7 @@ handle_recv(server_t *srv, struct conn *conn)
 
     status = conn->recv(conn);
     if (status != NC_OK) {
-        log_debug(LOG_INFO, "recv on conn:%p fd:%d failed: %s",
+        log_info("recv on conn:%p fd:%d failed: %s",
                   conn, conn->fd, strerror(errno));
     }
 
@@ -276,7 +275,7 @@ handle_send(server_t *srv, struct conn *conn)
 
     status = conn->send(conn);
     if (status != NC_OK) {
-        log_debug(LOG_INFO, "send on conn:%p fd:%d failed: %s",
+        log_info("send on conn:%p fd:%d failed: %s",
                   conn, conn->fd, strerror(errno));
     }
 
@@ -290,7 +289,7 @@ handle_close(server_t *srv, struct conn *conn)
 
     ASSERT(conn->fd > 0);
 
-    log_debug(LOG_NOTICE, "close conn:%p fd: %d on event %04"PRIX32" eof %d done "
+    log_debug("close conn:%p fd: %d on event %04"PRIX32" eof %d done "
               "%d rb %zu sb %zu%c %s", conn, conn->fd, conn->events,
               conn->eof, conn->done, conn->recv_bytes, conn->send_bytes,
               conn->err ? ':' : ' ', conn->err ? strerror(conn->err) : "");
@@ -322,7 +321,7 @@ handle_error(server_t *srv, struct conn *conn)
 static rstatus_t
 handle_timer(server_t *srv)
 {
-    log_debug(LOG_DEBUG, "on handle_timer ");
+    log_debug("on handle_timer ");
 
     return NC_OK;
 }
@@ -334,7 +333,7 @@ handle_event(void *arg, uint32_t events)
     struct conn *conn = arg;
     server_t *srv = conn->owner;
 
-    log_debug(LOG_VVERB, "event %04"PRIX32" on conn:%p fd:%d", events, conn, conn->fd);
+    log_debug("event %04"PRIX32" on conn:%p fd:%d", events, conn, conn->fd);
 
     conn->events = events;
 

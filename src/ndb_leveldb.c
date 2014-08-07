@@ -77,7 +77,7 @@ store_init(store_t *s)
     /* open db */
     s->db = leveldb_open(s->options, s->dbpath, &err);
     if (err != NULL) {
-        log_debug(LOG_WARN, "leveldb_open return err: %s", err);
+        log_error("leveldb_open return err: %s", err);
         leveldb_free(err);
         return NC_ERROR;
     }
@@ -112,7 +112,7 @@ store_get(store_t *s, sds key, sds *val)
     t = leveldb_get(s->db, s->roptions, key, sdslen(key), &val_len, &err);
 
     if (err != NULL) {
-        log_debug(LOG_WARN, "store_get return err: %s", err);
+        log_warn("store_get return err: %s", err);
         leveldb_free(err);
         return NC_ERROR;
     }
@@ -139,7 +139,7 @@ store_set(store_t *s, sds key, sds val)
     leveldb_put(s->db, s->woptions, key, sdslen(key), val, sdslen(val), &err);
 
     if (err != NULL) {
-        log_debug(LOG_WARN, "store_set return err: %s", err);
+        log_warn("store_set return err: %s", err);
         leveldb_free(err);
         return NC_ERROR;
     }
@@ -154,7 +154,7 @@ store_del(store_t *s, sds key)
     leveldb_delete(s->db, s->woptions, key, sdslen(key), &err);
 
     if (err != NULL) {
-        log_debug(LOG_WARN, "store_set return err: %s", err);
+        log_warn("store_set return err: %s", err);
         leveldb_free(err);
         return NC_ERROR;
     }

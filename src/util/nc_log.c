@@ -24,7 +24,7 @@ log_init(int level, char *name)
 {
     struct logger *l = &logger;
 
-    l->level = MAX(LOG_EMERG, MIN(level, LOG_PVERB));
+    l->level = MAX(LOG_ALWAYS, MIN(level, LOG_VERB));
     l->name = name;
     if (name == NULL || !strlen(name)) {
         l->fd = STDERR_FILENO;
@@ -72,7 +72,7 @@ log_level_up(void)
 {
     struct logger *l = &logger;
 
-    if (l->level < LOG_PVERB) {
+    if (l->level < LOG_VERB) {
         l->level++;
         loga("up log level to %d", l->level);
     }
@@ -83,7 +83,7 @@ log_level_down(void)
 {
     struct logger *l = &logger;
 
-    if (l->level > LOG_EMERG) {
+    if (l->level > LOG_ALWAYS) {
         l->level--;
         loga("down log level to %d", l->level);
     }
@@ -94,7 +94,7 @@ log_level_set(int level)
 {
     struct logger *l = &logger;
 
-    l->level = MAX(LOG_EMERG, MIN(level, LOG_PVERB));
+    l->level = MAX(LOG_ALWAYS, MIN(level, LOG_VERB));
     loga("set log level to %d", l->level);
 }
 
@@ -110,16 +110,38 @@ log_loggable(int level)
     return 1;
 }
 
+static inline char *
+log_level_s(int level)
+{
+    switch (level) {
+    case LOG_ALWAYS:
+        return "ALWAYS";
+    case LOG_ERROR:
+        return "ERROR";
+    case LOG_WARN:
+        return "WARN";
+    case LOG_NOTICE:
+        return "NOTICE";
+    case LOG_INFO:
+        return "INFO";
+    case LOG_DEBUG:
+        return "DEBUG";
+    case LOG_VERB:
+        return "VERB";
+    default:
+        return "UNKNOWN";
+    }
+}
+
 void
-_log(const char *file, int line, int panic, const char *fmt, ...)
+_log(int level, const char *file, int line, int panic, const char *fmt, ...)
 {
     struct logger *l = &logger;
     int len, size, errno_save;
     char buf[LOG_MAX_LEN], *timestr;
     va_list args;
-    struct tm *local;
-    time_t t;
     ssize_t n;
+    struct timeval tv;
 
     if (l->fd < 0) {
         return;
@@ -129,12 +151,11 @@ _log(const char *file, int line, int panic, const char *fmt, ...)
     len = 0;            /* length of output buffer */
     size = LOG_MAX_LEN; /* size of output buffer */
 
-    t = time(NULL);
-    local = localtime(&t);
-    timestr = asctime(local);
-
-    len += nc_scnprintf(buf + len, size - len, "[%.*s] %s:%d ",
-                        strlen(timestr) - 1, timestr, file, line);
+    gettimeofday(&tv, NULL);
+    buf[len++] = '[';
+    len += (int)strftime(buf + len, (size_t)(size - len), "%Y-%m-%d %H:%M:%S.", localtime(&tv.tv_sec));
+    len += nc_scnprintf(buf + len, size - len, "%03d", (int)tv.tv_usec/1000);
+    len += nc_scnprintf(buf + len, size - len, "] %s %s:%d ", log_level_s(level), file, line);
 
     va_start(args, fmt);
     len += nc_vscnprintf(buf + len, size - len, fmt, args);

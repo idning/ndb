@@ -86,14 +86,14 @@ conn_get(void *owner)
 
     conn->owner = owner;
 
-    log_debug(LOG_VVERB, "get conn %p", conn);
+    log_verb("get conn %p", conn);
     return conn;
 }
 
 static void
 conn_free(struct conn *conn)
 {
-    log_debug(LOG_VVERB, "free conn %p", conn);
+    log_verb("free conn %p", conn);
     nc_free(conn);
 }
 
@@ -104,7 +104,7 @@ conn_put(struct conn *conn)
     ASSERT(STAILQ_EMPTY(&conn->recv_queue));
     ASSERT(STAILQ_EMPTY(&conn->send_queue));
 
-    log_debug(LOG_VVERB, "put conn %p", conn);
+    log_verb("put conn %p", conn);
     /* TODO: free mbuf here */
 
     nfree_connq++;
@@ -114,7 +114,7 @@ conn_put(struct conn *conn)
 void
 conn_init(void)
 {
-    log_debug(LOG_DEBUG, "conn size %d", sizeof(struct conn));
+    log_debug("conn size %d", sizeof(struct conn));
     nfree_connq = 0;
     TAILQ_INIT(&free_connq);
 }
@@ -145,7 +145,7 @@ conn_recv_buf(struct conn *conn, void *buf, size_t size)
     for (;;) {
         n = nc_read(conn->fd, buf, size);
 
-        log_debug(LOG_VERB, "recv on conn:%p, fd:%d got %zd/%zu", conn, conn->fd, n, size);
+        log_verb("recv on conn:%p, fd:%d got %zd/%zu", conn, conn->fd, n, size);
 
         if (n > 0) {
             if (n < (ssize_t)size) {
@@ -159,17 +159,17 @@ conn_recv_buf(struct conn *conn, void *buf, size_t size)
         if (n == 0) {
             conn->recv_ready = 0;
             conn->eof = 1;
-            log_debug(LOG_INFO, "recv on conn:%p fd:%d eof rb %zu sb %zu", conn, conn->fd,
+            log_info("recv on conn:%p fd:%d eof rb %zu sb %zu", conn, conn->fd,
                       conn->recv_bytes, conn->send_bytes);
             return n;
         }
 
         if (errno == EINTR) {
-            log_debug(LOG_VERB, "recv on conn:%p fd:%d not ready - eintr", conn, conn->fd);
+            log_verb("recv on conn:%p fd:%d not ready - eintr", conn, conn->fd);
             continue;
         } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
             conn->recv_ready = 0;
-            log_debug(LOG_VERB, "recv on conn:%p fd:%d not ready - eagain", conn, conn->fd);
+            log_verb("recv on conn:%p fd:%d not ready - eagain", conn, conn->fd);
             return NC_EAGAIN;
         } else {
             conn->recv_ready = 0;
@@ -244,7 +244,7 @@ conn_send_buf(struct conn *conn, void *buf, size_t size)
     for (;;) {
         n = nc_write(conn->fd, buf, size);
 
-        log_debug(LOG_VERB, "sendv on fd %d %zd of %zu",
+        log_verb("sendv on fd %d %zd of %zu",
                   conn->fd, n, size);
 
         if (n > 0) {
@@ -262,11 +262,11 @@ conn_send_buf(struct conn *conn, void *buf, size_t size)
         }
 
         if (errno == EINTR) {
-            log_debug(LOG_VERB, "sendv on fd %d not ready - eintr", conn->fd);
+            log_verb("sendv on fd %d not ready - eintr", conn->fd);
             continue;
         } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
             conn->send_ready = 0;
-            log_debug(LOG_VERB, "sendv on fd %d not ready - eagain", conn->fd);
+            log_verb("sendv on fd %d not ready - eagain", conn->fd);
             return NC_EAGAIN;
         } else {
             conn->send_ready = 0;
@@ -364,7 +364,7 @@ conn_close(struct conn *conn)
     }
 
     if (!STAILQ_EMPTY(&conn->recv_queue)) {
-        log_debug(LOG_WARN, "close conn %d discard data in send_queue", conn->fd);
+        log_warn("close conn %d discard data in send_queue", conn->fd);
         for (mbuf = STAILQ_FIRST(&conn->recv_queue); mbuf != NULL; mbuf = nbuf) {
             nbuf = STAILQ_NEXT(mbuf, next);
             mbuf_remove(&conn->recv_queue, mbuf);
@@ -373,7 +373,7 @@ conn_close(struct conn *conn)
     }
 
     if (!STAILQ_EMPTY(&conn->send_queue)) {
-        log_debug(LOG_WARN, "close conn %d discard data in send_queue", conn->fd);
+        log_warn("close conn %d discard data in send_queue", conn->fd);
         for (mbuf = STAILQ_FIRST(&conn->send_queue); mbuf != NULL; mbuf = nbuf) {
             nbuf = STAILQ_NEXT(mbuf, next);
             mbuf_remove(&conn->send_queue, mbuf);

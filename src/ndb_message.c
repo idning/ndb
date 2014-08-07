@@ -45,7 +45,7 @@ msg_put(msg_t *msg)
 {
     int i;
 
-    log_debug(LOG_VVERB, "put msg %p id %"PRIu64"", msg, msg->id);
+    log_verb("put msg %p id %"PRIu64"", msg, msg->id);
 
     if (msg->argv) {
         for (i = 0; i < msg->argc; i++) {
@@ -98,7 +98,7 @@ msg_read_len(struct conn *conn, uint32_t len)
     ASSERT(len == 0);
     ASSERT(sdslen(s) != 0);
 
-    log_debug(LOG_DEBUG, "msg_read_len return sds: %p, len:%d", s, sdslen(s));
+    log_debug("msg_read_len return sds: %p, len:%d", s, sdslen(s));
     return s;
 }
 
@@ -140,7 +140,7 @@ msg_parse(struct conn *conn)
     };
 
     ASSERT(msg != NULL);
-    log_debug(LOG_DEBUG, "msg_parse on conn:%p msg:%p", conn, msg);
+    log_debug("msg_parse on conn:%p msg:%p", conn, msg);
 
     for (;;) {
         switch (msg->state) {
@@ -203,15 +203,15 @@ msg_parse(struct conn *conn)
     NOT_REACHED();
 
 again:
-    log_debug(LOG_DEBUG, "msg_parse req return again on state: %d", msg->state);
+    log_debug("msg_parse req return again on state: %d", msg->state);
     return NC_EAGAIN;
 
 err:
-    log_debug(LOG_DEBUG, "msg_parse req return err on state: %d", msg->state);
+    log_debug("msg_parse req return err on state: %d", msg->state);
     errno = EINVAL;
     return NC_ERROR;
 
 done:
-    log_debug(LOG_DEBUG, "parsed req argc: %d, cmd: %s", msg->argc, msg->argv[0]);
+    log_debug("parsed req argc: %d, cmd: %s", msg->argc, msg->argv[0]);
     return NC_OK;
 }

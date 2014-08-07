@@ -60,7 +60,7 @@ event_base_create(int nevent, event_cb_t cb)
     evb->nevent = nevent;
     evb->cb = cb;
 
-    log_debug(LOG_INFO, "event %d with nevent %d", evb->ep, evb->nevent);
+    log_info("event %d with nevent %d", evb->ep, evb->nevent);
 
     return evb;
 }
@@ -250,7 +250,7 @@ event_wait(struct event_base *evb, int timeout)
                 struct epoll_event *ev = &evb->event[i];
                 uint32_t events = 0;
 
-                log_debug(LOG_VVERB, "epoll %04"PRIX32" triggered on conn %p",
+                log_verb("epoll %04"PRIX32" triggered on conn %p",
                           ev->events, ev->data.ptr);
 
                 if (ev->events & EPOLLERR) {

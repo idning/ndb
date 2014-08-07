@@ -150,12 +150,12 @@ command_process(struct conn *conn, msg_t *msg)
         return command_reply_err(conn, "-ERR wrong number of arguments\r\n");
     }
 
-    log_debug(LOG_INFO, "ndb_process_msg: %"PRIu64" argc=%d, cmd=%s", msg->id,
+    log_info("ndb_process_msg: %"PRIu64" argc=%d, cmd=%s", msg->id,
               msg->argc, msg->argv[0]);
 
     status = cmd->proc(conn, msg);
     if (status != NC_OK) {                  /* store engine error will got here */
-        log_debug(LOG_WARN, "-ERR cmd->proc got err");
+        log_warn("-ERR cmd->proc got err");
         return command_reply_err(conn, "-ERR cmd->proc got err\r\n");
     }
 
@@ -171,7 +171,7 @@ command_process_set(struct conn *conn, msg_t *msg)
     sds key = msg->argv[1];
     sds val = msg->argv[2];
 
-    log_debug(LOG_DEBUG, "store_set %s => %s", key, val);
+    log_debug("store_set %s => %s", key, val);
     status = store_set(&instance->store, key, val);
     if (status != NC_OK) {
         return status;
@@ -213,8 +213,7 @@ command_process_get(struct conn *conn, msg_t *msg)
         return status;
     }
 
-    log_debug(LOG_DEBUG, "store_get %s return : %s", key, val);
-
+    log_debug("store_get %s return : %s", key, val);
 
     /* not exist */
     if (val == NULL) {
