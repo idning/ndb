@@ -117,7 +117,6 @@ msg_read_line(struct conn *conn)
         nbuf = STAILQ_NEXT(mbuf, next);
         for (p = mbuf->pos; p < mbuf->last; p++) {
             len++;
-            log_debug(LOG_DEBUG, "read *p: %c", *p);
             if (*p == CR) {
                 return msg_read_len(conn, len + 1);
             }

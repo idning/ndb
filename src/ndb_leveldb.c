@@ -120,6 +120,10 @@ store_get(store_t *s, sds key, sds *val)
     if (t != NULL) {
         *val = sdsnewlen(t, val_len);
         free(t);
+
+        if (*val == NULL) {
+            return NC_ENOMEM;
+        }
         return NC_OK;
     } else {
         *val = NULL;
@@ -161,6 +165,51 @@ rstatus_t
 store_compact(store_t *s)
 {
     leveldb_compact_range(s->db, NULL, 0, NULL, 0);
+    return NC_OK;
+}
+
+/*
+typedef store_iter_s {
+    leveldb_iterator_t* iter;
+} store_iter_t;
+
+store_iter_t *
+store_create_iter(store_t *s, sds startkey)
+{
+
+}
+
+
+*/
+
+rstatus_t
+store_scan(store_t *s, scan_callback_t callback)
+{
+    leveldb_iterator_t* iter;
+    sds key = sdsempty();
+    sds val = sdsempty();
+    const char *str;
+    size_t len;
+    rstatus_t status;
+
+    iter = leveldb_create_iterator(s->db, s->roptions);
+    leveldb_iter_seek_to_first(iter);
+
+    for (; leveldb_iter_valid(iter); leveldb_iter_next(iter)) {
+        str = leveldb_iter_key(iter, &len);
+        key = sdscpylen(key, str, len);  /* TODO: check mem */
+
+        str = leveldb_iter_value(iter, &len);
+        val = sdscpylen(val, str, len);  /* TODO: check mem */
+
+        status = callback(s, key, val);
+        if (status != NC_OK) {
+            return status;
+        }
+    }
+
+    sdsfree(key);
+    sdsfree(val);
     return NC_OK;
 }
 

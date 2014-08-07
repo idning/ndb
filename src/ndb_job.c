@@ -50,7 +50,7 @@ job_signal(job_type_t type)
     return status;
 }
 
-/* TODO: rename ttl => Elimination */
+/* TODO: rename ttl => Elimination and trigger this .*/
 
 static rstatus_t
 job_run_ttl(job_t *job)
