@@ -104,6 +104,37 @@ store_deinit(store_t *s)
     return NC_OK;
 }
 
+/*
+ * drop & reopen
+ */
+rstatus_t
+store_drop(store_t *s)
+{
+    char *err = NULL;
+
+    /* close */
+    leveldb_close(s->db);
+    s->db = NULL;
+
+    /* destory */
+    leveldb_destroy_db(s->options, s->dbpath, &err);
+    if (err != NULL) {
+        log_error("leveldb_destory return err: %s", err);
+        leveldb_free(err);
+        return NC_ERROR;
+    }
+
+    /* reopen */
+    s->db = leveldb_open(s->options, s->dbpath, &err);
+    if (err != NULL) {
+        log_error("leveldb_open return err: %s", err);
+        leveldb_free(err);
+        return NC_ERROR;
+    }
+
+    return NC_OK;
+}
+
 rstatus_t
 store_get(store_t *s, sds key, sds *val)
 {
@@ -168,6 +199,12 @@ store_compact(store_t *s)
 {
     leveldb_compact_range(s->db, NULL, 0, NULL, 0);
     return NC_OK;
+}
+
+char *
+store_info(store_t *s)
+{
+    return leveldb_property_value(s->db, "leveldb.stats");
 }
 
 /*

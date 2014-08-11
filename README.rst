@@ -25,10 +25,11 @@ todo
     - if we use thecmp, this db can not open by other apps
 4. #compact
 5. #expire
-6. scan
+6. #scan
 7. master-slave
 8. backup (dump / copy file, if we have scan, we do not need this)
-9. info/drop
+9. #info
+10. #FLUSHDB
 
 type:
 

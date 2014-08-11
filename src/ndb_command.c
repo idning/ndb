@@ -14,6 +14,8 @@ static rstatus_t command_process_compact(struct conn *conn, msg_t *msg);
 static rstatus_t command_process_expire(struct conn *conn, msg_t *msg);
 static rstatus_t command_process_ttl(struct conn *conn, msg_t *msg);
 static rstatus_t command_process_scan(struct conn *conn, msg_t *msg);
+static rstatus_t command_process_flushdb(struct conn *conn, msg_t *msg);
+static rstatus_t command_process_info(struct conn *conn, msg_t *msg);
 
 static command_t command_table[] = {
     { "get",     2,  command_process_get     },
@@ -22,9 +24,13 @@ static command_t command_table[] = {
     { "expire",  3,  command_process_expire  },
     { "ttl",     2,  command_process_ttl     },
 
+    { "scan",    -2, command_process_scan    },
+
     { "ping",    1,  command_process_ping    },
     { "compact", 1,  command_process_compact },
-    { "scan",    -2, command_process_scan    },
+    { "flushdb", 1,  command_process_flushdb },
+    { "flushall",1,  command_process_flushdb },
+    { "info",    1,  command_process_info},
 };
 
 rstatus_t
@@ -520,3 +526,39 @@ command_process_compact(struct conn *conn, msg_t *msg)
         return command_reply_err(conn, "-ERR compact already running\r\n");
     }
 }
+
+static rstatus_t
+command_process_flushdb(struct conn *conn, msg_t *msg)
+{
+    rstatus_t status = NC_OK;
+    server_t *srv = conn->owner;
+    instance_t *instance = srv->owner;
+
+    status = store_drop(&instance->store);
+    if (status == NC_OK) {
+        return command_reply_ok(conn);
+    } else {
+        return command_reply_err(conn, "-ERR error on flushdb\r\n");
+    }
+}
+
+static rstatus_t
+command_process_info(struct conn *conn, msg_t *msg)
+{
+    rstatus_t status = NC_OK;
+    server_t *srv = conn->owner;
+    instance_t *instance = srv->owner;
+    char *s;
+    sds info = sdsempty();
+
+    info = sdscatprintf(info, "#Store\r\n");
+
+    s = store_info(&instance->store);
+    info = sdscatprintf(info, s);
+
+    status = command_reply_bluk(conn, info, sdslen(info));
+    sdsfree(info);
+
+    return status;
+}
+
