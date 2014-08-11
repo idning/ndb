@@ -34,3 +34,5 @@ deps/leveldb/
 deps/lua/src/lua
 deps/lua/src/luac
 deps/snappy/
+
+*.pyc

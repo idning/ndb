@@ -165,6 +165,8 @@ server_listen(server_t *srv)
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags = AI_PASSIVE;                /* No effect if host != NULL */
+
     if (getaddrinfo(host, port, &hints, &res) != 0) {
         log_error("getaddrinfo failed: %s", strerror(errno));
         return NC_ERROR;

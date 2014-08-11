@@ -4,6 +4,10 @@ all: dep
 dep:
 	cd deps && $(MAKE)
 
+test:
+	cd test && $(MAKE) test
+
+
 clean:
 	cd deps && $(MAKE) $@
 	cd src && $(MAKE) $@
@@ -11,4 +15,5 @@ clean:
 	rm -f tags cscope.*
 	rm -rf db
 
-.PHONY: all clean
+
+.PHONY: all clean test

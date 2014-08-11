@@ -37,8 +37,9 @@ type:
 - hash
 - list
 
-we do not support:
+we do not want to support:
 
 - set
 - zset
 - script
+
