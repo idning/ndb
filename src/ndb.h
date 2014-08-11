@@ -15,6 +15,7 @@ typedef struct instance_s instance_t;
 #include "ndb_command.h"
 #include "ndb_job.h"
 #include "ndb_ttl.h"
+#include "ndb_cursor.h"
 
 struct instance_s {
     server_t            srv;

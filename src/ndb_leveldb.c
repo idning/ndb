@@ -92,6 +92,8 @@ store_deinit(store_t *s)
         return NC_OK;
 
     leveldb_close(s->db);
+    s->db = NULL;
+
     leveldb_options_destroy(s->options);
     leveldb_readoptions_destroy(s->roptions);
     leveldb_writeoptions_destroy(s->woptions);
@@ -185,7 +187,7 @@ store_create_iter(store_t *s, sds startkey)
 rstatus_t
 store_scan(store_t *s, scan_callback_t callback)
 {
-    leveldb_iterator_t* iter;
+    leveldb_iterator_t *iter;
     sds key = sdsempty();
     sds val = sdsempty();
     const char *str;
@@ -210,6 +212,8 @@ store_scan(store_t *s, scan_callback_t callback)
 
     sdsfree(key);
     sdsfree(val);
+
+    leveldb_iter_destroy(iter);
     return NC_OK;
 }
 

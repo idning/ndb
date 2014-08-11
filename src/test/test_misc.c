@@ -38,6 +38,7 @@ test_array()
 
 
     array_each(arr, array_check, NULL);
+    array_destroy(arr);
 }
 
 /************************* test log *************************/

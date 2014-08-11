@@ -199,6 +199,8 @@ ndb_init(instance_t *instance)
 
     command_init();
 
+    cursor_init();
+
     if (instance->daemonize) {
         status = nc_daemonize(1);
         if (status != NC_OK) {
@@ -245,6 +247,8 @@ ndb_deinit(instance_t *instance)
 
     msg_deinit();
 
+    cursor_deinit();
+
     command_deinit();
 
     ndb_print_done(instance);
@@ -286,7 +290,6 @@ main(int argc, const char **argv)
 
     status = ndb_init(&instance);
     if (status != NC_OK) {
-        ndb_deinit(&instance);
         exit(1);
     }
 
