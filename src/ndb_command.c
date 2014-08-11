@@ -389,7 +389,7 @@ command_process_ttl(struct conn *conn, msg_t *msg)
         return command_reply_num(conn, -2);
     }
 
-    return command_reply_num(conn, when - nc_msec_now());
+    return command_reply_num(conn, (when - nc_msec_now()) / 1000);
 }
 
 /*

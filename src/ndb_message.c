@@ -179,14 +179,15 @@ msg_parse(struct conn *conn)
             if (s == NULL) {
                 goto again;
             }
-
             ASSERT(sdslen(s) == msg->rarglen + 2);
 
             msg->state = SW_ARGV_LEN;
-            msg->argv[msg->rargidx++] = s;
 
             /* eat \r\n */
-            s = sdstrim(s, "\r\n");
+            /* sdsrange(s, 1, -3); sdsrange() has bug here */
+            s = sdsrtrim_crlf(s);
+
+            msg->argv[msg->rargidx++] = s;
 
             if (msg->rargidx == msg->argc) {
                 msg->state = SW_END;

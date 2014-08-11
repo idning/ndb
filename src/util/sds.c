@@ -371,6 +371,25 @@ sds sdstrim(sds s, const char *cset) {
     return s;
 }
 
+/*
+ * only trim cr lf in the end
+ */
+sds sdsrtrim_crlf(sds s) {
+    struct sdshdr *sh = (void*) (s-(sizeof(struct sdshdr)));
+    size_t len;
+
+    len = sdslen(s);
+    /* no crlf */
+    if (len < 2){
+        return s;
+    }
+
+    sh->len -= 2;
+    sh->free += 2;
+    sh->buf[sh->len] = '\0';
+    return s;
+}
+
 /* Turn the string into a smaller (or equal) string containing only the
  * substring specified by the 'start' and 'end' indexes.
  *
@@ -385,7 +404,7 @@ sds sdstrim(sds s, const char *cset) {
  * Example:
  *
  * s = sdsnew("Hello World");
- * sdstrim(s,1,-1); => "ello Worl"
+ * sdstrim(s,1,-1); => "ello World"
  */
 void sdsrange(sds s, int start, int end) {
     struct sdshdr *sh = (void*) (s-(sizeof(struct sdshdr)));

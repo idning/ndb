@@ -53,7 +53,6 @@ cursor_create(store_t *store)
     }
 
     leveldb_iter_seek_to_first(cursor->iter);
-    ASSERT(leveldb_iter_valid(cursor->iter));
 
     cursor->id = g_cursor_id++;
     cursor->owner = store;
