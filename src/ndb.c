@@ -144,6 +144,7 @@ ndb_conn_recv_done(struct conn *conn)
         log_info("msg_parse on conn %p return %d", conn, status);
 
         if (status == NC_ERROR) {
+            /* TODO: should we reply protocol error here? */
             conn->err = errno;
             conn_add_out(conn);
             break;

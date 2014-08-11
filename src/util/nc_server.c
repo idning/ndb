@@ -9,7 +9,8 @@ server_init(server_t *srv)
     mbuf_init(srv->mbuf_size);
 
     conn_init();
-
+    /* every second */
+    srv->ev_timeout = 1000;
     srv->evb = event_base_create(EVENT_SIZE, &handle_event);
     if (srv->evb == NULL) {
         return NC_ERROR;

@@ -114,5 +114,6 @@ cursor_next_key(cursor_t *cursor)
 rstatus_t
 cursor_cron()
 {
+    /* TODO */
     return NC_OK;
 }

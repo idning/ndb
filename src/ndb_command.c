@@ -30,7 +30,7 @@ static command_t command_table[] = {
     { "compact", 1,  command_process_compact },
     { "flushdb", 1,  command_process_flushdb },
     { "flushall",1,  command_process_flushdb },
-    { "info",    1,  command_process_info},
+    { "info",    1,  command_process_info    },
 };
 
 rstatus_t

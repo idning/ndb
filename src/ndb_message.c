@@ -182,7 +182,9 @@ msg_parse(struct conn *conn)
             ASSERT(sdslen(s) == msg->rarglen + 2);
 
             msg->state = SW_ARGV_LEN;
-
+            if ((s[sdslen(s)-1] != '\n') || (s[sdslen(s)-2] != '\r')) {
+                goto err;
+            }
             /* eat \r\n */
             /* sdsrange(s, 1, -3); sdsrange() has bug here */
             s = sdsrtrim_crlf(s);
