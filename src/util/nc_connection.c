@@ -219,6 +219,7 @@ rstatus_t
 conn_recv(struct conn *conn)
 {
     rstatus_t status;
+    server_t *srv = conn->owner;
 
     conn->recv_ready = 1;
     do {
@@ -229,7 +230,8 @@ conn_recv(struct conn *conn)
     } while (conn->recv_ready);
 
     /* callback */
-    return conn->recv_done(conn);
+    /* TODO: rethink when should we call recv_done */
+    return srv->recv_done(conn);
 }
 
 static ssize_t
@@ -287,6 +289,7 @@ conn_send_queue(struct conn *conn)
     struct mbuf *mbuf, *nbuf;                   /* current and next mbuf */
     size_t mlen;                                /* current mbuf data length */
     ssize_t n;
+    server_t *srv = conn->owner;
 
     for (mbuf = STAILQ_FIRST(&conn->send_queue); mbuf != NULL; mbuf = nbuf) {
         nbuf = STAILQ_NEXT(mbuf, next);
@@ -318,7 +321,8 @@ conn_send_queue(struct conn *conn)
     }
 
     conn->send_ready = 0;
-    return conn->send_done(conn);
+    /* TODO: rethink when should we call send_done */
+    return srv->send_done(conn);
 }
 
 rstatus_t

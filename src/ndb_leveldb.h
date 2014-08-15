@@ -30,7 +30,7 @@ typedef struct store_s {
     leveldb_writeoptions_t      *woptions;
 } store_t;
 
-rstatus_t store_init(store_t *s);
+rstatus_t store_init(void *owner, store_t *s);
 rstatus_t store_deinit(store_t *s);
 
 rstatus_t store_get(store_t *s, sds key, sds *val);

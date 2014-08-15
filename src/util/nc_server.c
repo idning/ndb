@@ -4,13 +4,19 @@ static rstatus_t handle_event(void *arg, uint32_t events);
 static rstatus_t handle_timer(server_t *srv);
 
 rstatus_t
-server_init(server_t *srv)
+server_init(void *owner, server_t *srv,
+        conn_callback_t recv_done, conn_callback_t send_done)
 {
+    srv->owner = owner;
+
     mbuf_init(srv->mbuf_size);
 
     conn_init();
-    /* every second */
-    srv->ev_timeout = 1000;
+
+    srv->recv_done = recv_done;
+    srv->send_done = send_done;
+    srv->ev_timeout = 1000;     /* every second */
+
     srv->evb = event_base_create(EVENT_SIZE, &handle_event);
     if (srv->evb == NULL) {
         return NC_ERROR;
@@ -86,7 +92,6 @@ server_accept(struct conn *p)
         return NC_ENOMEM;
     }
     c->fd = fd;
-    srv->accept_done(c);
 
     status = nc_set_nonblocking(c->fd);
     if (status < 0) {
@@ -151,6 +156,7 @@ server_listen(server_t *srv)
     rstatus_t status;
     struct addrinfo hints, *res;
 
+    /* TODO: handle unix domain socket here */
     /* get host/port from srv->listen */
     port = strchr(srv->listen, ':');
     if (port != NULL) {
@@ -162,7 +168,7 @@ server_listen(server_t *srv)
         port = srv->listen;
     }
 
-    /* Get the address info */
+    /* get the address info */
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM;

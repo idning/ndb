@@ -36,9 +36,7 @@ struct conn {
     size_t             send_queue_bytes;    /* received (read) bytes */
 
     conn_callback_t    recv;                /* recv (read) handler */
-    conn_callback_t    recv_done;           /* recv done handler */
     conn_callback_t    send;                /* send (write) handler */
-    conn_callback_t    send_done;           /* send done handler */
     conn_callback_t    close;               /* close handler */
 
     size_t             recv_bytes;          /* received (read) bytes */

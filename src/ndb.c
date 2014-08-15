@@ -176,16 +176,6 @@ ndb_conn_send_done(struct conn *conn)
     return conn_add_in(conn);
 }
 
-rstatus_t
-ndb_conn_accept_done(struct conn *conn)
-{
-    log_info("conn_accept_done on conn: %p", conn);
-
-    conn->recv_done = ndb_conn_recv_done;
-    conn->send_done = ndb_conn_send_done;
-    return NC_OK;
-}
-
 static rstatus_t
 ndb_init(instance_t *instance)
 {
@@ -216,17 +206,16 @@ ndb_init(instance_t *instance)
         return status;
     }
 
-    status = store_init(&instance->store);
+    status = store_init(instance, &instance->store);
     if (status != NC_OK) {
         return status;
     }
-    instance->store.owner = instance;
 
-    status = server_init(&instance->srv);
+    status = server_init(instance, &instance->srv,
+            ndb_conn_recv_done, ndb_conn_send_done);
     if (status != NC_OK) {
         return status;
     }
-    instance->srv.owner = instance;
 
     status = job_init(instance);
     if (status != NC_OK) {
@@ -266,7 +255,6 @@ ndb_deinit(instance_t *instance)
 static rstatus_t
 ndb_run(instance_t *instance)
 {
-    instance->srv.accept_done = ndb_conn_accept_done;
     return server_run(&instance->srv);
 }
 

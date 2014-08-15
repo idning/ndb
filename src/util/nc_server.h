@@ -17,14 +17,15 @@ typedef struct server_s {
     int                 backlog;
     struct event_base   *evb;                       /* event base */
     int                 ev_timeout;                 /* timeout for event_wait */
-    int                 mbuf_size;                  /* timeout for event_wait */
+    int                 mbuf_size;                  /* mbuf_size, TOOD: not used yet */
     struct conn         *conn;                      /* listen conn */
 
-    //TODO: this is not cool
-    conn_callback_t     accept_done;                /* callback when new conn accepted */
+    conn_callback_t     recv_done;                  /* recv done handler */
+    conn_callback_t     send_done;                  /* send done handler */
 } server_t;
 
-rstatus_t server_init(server_t *srv);
+rstatus_t server_init(void *owner, server_t *srv,
+        conn_callback_t recv_done, conn_callback_t send_done);
 rstatus_t server_deinit(server_t *srv);
 rstatus_t server_run(server_t *srv);
 

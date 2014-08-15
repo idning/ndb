@@ -31,13 +31,14 @@ _cmp_name(void *arg)
 }
 
 rstatus_t
-store_init(store_t *s)
+store_init(void *owner, store_t *s)
 {
     char *err = NULL;
     leveldb_options_t *options;
     leveldb_readoptions_t *roptions;
     leveldb_writeoptions_t *woptions;
 
+    s->owner = owner;
     s->cmp = leveldb_comparator_create(NULL, _cmp_destroy, _cmp_compare, _cmp_name);
     s->cache = leveldb_cache_create_lru(s->cache_size);            /* cache size */
     s->env = leveldb_create_default_env();

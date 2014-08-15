@@ -17,7 +17,7 @@ typedef enum {
 
 typedef struct job_s {
     job_type_t          type;
-    void                *owner;   /* instance */
+    instance_t          *owner;   /* instance */
 
     uint8_t             running;
 
