@@ -21,4 +21,7 @@ rstatus_t command_init();
 rstatus_t command_deinit();
 rstatus_t command_process(struct conn* conn, msg_t *msg);
 
+rstatus_t ndb_conn_recv_done(struct conn *conn);
+rstatus_t ndb_conn_send_done(struct conn *conn);
+
 #endif

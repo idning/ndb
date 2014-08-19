@@ -129,55 +129,6 @@ ndb_load_conf(instance_t *instance)
 #undef M
 
 static rstatus_t
-ndb_conn_recv_done(struct conn *conn)
-{
-    rstatus_t status;
-
-    log_debug("conn_recv_done on conn: %p", conn);
-
-    for (;;) {
-        if (conn->data == NULL) {
-            conn->data = msg_get(conn);
-        }
-
-        status = msg_parse(conn);
-        log_info("msg_parse on conn %p return %d", conn, status);
-
-        if (status == NC_ERROR) {
-            /* TODO: should we reply protocol error here? */
-            conn->err = errno;
-            conn_add_out(conn);
-            break;
-        } else if (status == NC_EAGAIN) {
-            conn_add_in(conn);
-            break;
-        }
-
-        /* got a msg here */
-        status = command_process(conn, conn->data);
-        msg_put(conn->data);
-        conn->data = NULL;
-        conn_add_out(conn);
-        if (status != NC_OK) {
-            conn->err = errno;
-            return status;
-        }
-    }
-    return NC_OK;
-}
-
-static rstatus_t
-ndb_conn_send_done(struct conn *conn)
-{
-    log_debug("conn_send_done on conn: %p", conn);
-
-    /* TODO: idle and timeout */
-
-    /* renable in */
-    return conn_add_in(conn);
-}
-
-static rstatus_t
 ndb_init(instance_t *instance)
 {
     rstatus_t status;

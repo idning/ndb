@@ -70,3 +70,6 @@ def test_scan():
             break
     assert set(all_keys) == set(kv.keys())
 
+def just_wait():
+    time.sleep(60*60)
+

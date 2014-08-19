@@ -63,6 +63,7 @@ msg_read_len(struct conn *conn, uint32_t len)
     sds s = NULL;
     struct mbuf *mbuf, *nbuf;
 
+    log_debug("msg_read_len on conn:%p len:%d", conn, len);
     /* TODO */
     if (conn->recv_queue_bytes < len) {
         return NULL;
@@ -156,9 +157,14 @@ msg_parse(struct conn *conn)
 
             msg->state = SW_ARGV_LEN;
             msg->argc = atoi(s + 1);
+            sdsfree(s);
+
+            if (msg->argc <= 0) {
+                goto err;
+            }
+
             msg->argv = nc_zalloc(sizeof(*msg->argv) * msg->argc);
             msg->rargidx = 0;
-            sdsfree(s);
             break;
 
         case SW_ARGV_LEN:
@@ -172,6 +178,11 @@ msg_parse(struct conn *conn)
             msg->state = SW_ARGV;
             msg->rarglen = atoi(s + 1);
             sdsfree(s);
+
+            if (msg->rarglen < 0) {
+                goto err;
+            }
+
             break;
 
         case SW_ARGV:

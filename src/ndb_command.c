@@ -562,3 +562,59 @@ command_process_info(struct conn *conn, msg_t *msg)
     return status;
 }
 
+rstatus_t
+ndb_conn_recv_done(struct conn *conn)
+{
+    rstatus_t status;
+
+    log_debug("conn_recv_done on conn: %p", conn);
+
+    for (;;) {
+        if (conn->data == NULL) {
+            conn->data = msg_get(conn);
+        }
+
+        status = msg_parse(conn);
+        log_info("msg_parse on conn %p return %d", conn, status);
+
+        if (status != NC_OK) {
+            if (status == NC_ERROR) { // parse error
+                /* TODO: should we reply protocol error here? */
+                /* conn->err = errno; */
+                conn->done = 1;
+                command_reply_err(conn, "-ERR Protocol error\r\n");
+                conn_add_out(conn);
+                break;
+            } else if (status == NC_EAGAIN) {
+                conn_add_in(conn);
+                break;
+            } else { //TODO: no mem
+                conn->err = errno;
+                return NC_ERROR;
+            }
+        } else {
+            /* got a msg here */
+            status = command_process(conn, conn->data);
+            msg_put(conn->data);
+            conn->data = NULL;
+            conn_add_out(conn);
+            if (status != NC_OK) {
+                conn->err = errno;
+                return status;
+            }
+        }
+    }
+    return NC_OK;
+}
+
+rstatus_t
+ndb_conn_send_done(struct conn *conn)
+{
+    log_debug("conn_send_done on conn: %p", conn);
+
+    /* TODO: idle and timeout */
+
+    /* renable in */
+    return conn_add_in(conn);
+}
+

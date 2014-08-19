@@ -357,7 +357,7 @@ handle_event(void *arg, uint32_t events)
     /* read takes precedence over write */
     if (events & EVENT_READ) {
         status = handle_recv(srv, conn);
-        if (status != NC_OK || conn->done || conn->err) {
+        if (status != NC_OK || conn->err) {
             handle_close(srv, conn);
             return NC_ERROR;
         }
@@ -365,11 +365,19 @@ handle_event(void *arg, uint32_t events)
 
     if (events & EVENT_WRITE) {
         status = handle_send(srv, conn);
-        if (status != NC_OK || conn->done || conn->err) {
+        if (status != NC_OK || conn->err) {
             handle_close(srv, conn);
             return NC_ERROR;
         }
     }
 
+    /*
+     * conn->done means that all data we recv in the conn is processed,
+     * if we all data in this conn is sent, we can close this conn
+     */
+    if (conn->done &&
+        STAILQ_EMPTY(&conn->recv_queue) && STAILQ_EMPTY(&conn->send_queue) ) {
+            handle_close(srv, conn);
+    }
     return NC_OK;
 }
