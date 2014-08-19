@@ -20,7 +20,7 @@ T_VERBOSE = int(getenv('T_VERBOSE', 3))
 T_MBUF = int(getenv('T_MBUF', 512))
 T_LARGE = int(getenv('T_LARGE', T_LARGE_DEFAULT))
 
-ndb = NDB('127.0.0.5', 5527, '/tmp/r/ndb-5529/', {'loglevel': T_VERBOSE})
+ndb = NDB('127.0.0.5', 5528, '/tmp/r/ndb-5528/', {'loglevel': T_VERBOSE})
 
 def setup():
     print 'setup(T_MBUF=%s, T_VERBOSE=%s, T_LARGE=%s)' % (T_MBUF, T_VERBOSE, T_LARGE)

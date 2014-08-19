@@ -133,7 +133,7 @@ ndb_conn_recv_done(struct conn *conn)
 {
     rstatus_t status;
 
-    log_info("conn_recv_done on conn: %p", conn);
+    log_debug("conn_recv_done on conn: %p", conn);
 
     for (;;) {
         if (conn->data == NULL) {
@@ -169,9 +169,10 @@ ndb_conn_recv_done(struct conn *conn)
 static rstatus_t
 ndb_conn_send_done(struct conn *conn)
 {
-    log_info("conn_send_done on conn: %p", conn);
+    log_debug("conn_send_done on conn: %p", conn);
 
     /* TODO: idle and timeout */
+
     /* renable in */
     return conn_add_in(conn);
 }
@@ -241,11 +242,11 @@ ndb_deinit(instance_t *instance)
 
     command_deinit();
 
-    ndb_print_done(instance);
+    server_deinit(&instance->srv);
 
     store_deinit(&instance->store);
 
-    server_deinit(&instance->srv);
+    ndb_print_done(instance);
 
     log_deinit();
 
