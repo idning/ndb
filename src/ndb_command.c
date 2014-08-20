@@ -214,31 +214,12 @@ command_process_set(struct conn *conn, msg_t *msg)
     sds val = msg->argv[2];
 
     log_debug("store_set %s => %s", key, val);
-    status = store_set(&instance->store, key, val);
+    status = store_set(&instance->store, key, val, STORE_DEFAULT_EXPIRE);
     if (status != NC_OK) {
         return status;
     }
 
     return command_reply_ok(conn);
-}
-
-/* TODO: move this into store */
-static rstatus_t
-del_key_and_clear_expire(store_t *store, sds key)
-{
-    rstatus_t status;
-
-    status = store_del(store, key);      /* TODO: put this input del */
-    if (status != NC_OK) {
-        return status;
-    }
-
-    status = ndb_set_expire(store, key, -1);
-    if (status != NC_OK) {
-        return status;
-    }
-
-    return NC_OK;
 }
 
 static rstatus_t
@@ -249,9 +230,9 @@ command_process_get(struct conn *conn, msg_t *msg)
     instance_t *instance = srv->owner;
     sds key = msg->argv[1];
     sds val = NULL;
-    int64_t when;
+    int64_t expire;
 
-    status = store_get(&instance->store, key, &val);
+    status = store_get(&instance->store, key, &val, &expire);
     if (status != NC_OK) {
         return status;
     }
@@ -263,25 +244,10 @@ command_process_get(struct conn *conn, msg_t *msg)
         return command_reply_empty_bluk(conn);
     }
 
-    status = ndb_get_expire(&instance->store, key, &when);
-    if (status != NC_OK) {
-        goto out;
-    }
-
-    /* expired */
-    if ((when > 0) && (when < nc_msec_now())) {
-        status = del_key_and_clear_expire(&instance->store, key);
-        if (status != NC_OK) {
-            goto out;
-        }
-        status = command_reply_empty_bluk(conn);
-    } else {
-        status = command_reply_bluk(conn, val, sdslen(val));
-    }
-
-out:
+    status = command_reply_bluk(conn, val, sdslen(val));
     sdsfree(val);
     return status;
+
 }
 
 static rstatus_t
@@ -292,9 +258,11 @@ command_process_del(struct conn *conn, msg_t *msg)
     instance_t *instance = srv->owner;
     sds key = msg->argv[1];
     sds val = NULL;
+    int64_t expire;
 
-    status = store_get(&instance->store, key, &val);
+    status = store_get(&instance->store, key, &val, &expire);
     if (status != NC_OK) {
+        log_warn("store_get return %d", status);
         return status;
     }
 
@@ -305,8 +273,9 @@ command_process_del(struct conn *conn, msg_t *msg)
 
     sdsfree(val);
 
-    status = del_key_and_clear_expire(&instance->store, key);
+    status = store_del(&instance->store, key);
     if (status != NC_OK) {
+        log_warn("store_del return %d", status);
         return status;
     }
 
@@ -321,14 +290,9 @@ command_process_expire(struct conn *conn, msg_t *msg)
     instance_t *instance = srv->owner;
     sds key = msg->argv[1];
     sds val = NULL;
-    int64_t when = atoll(msg->argv[2]);
+    int64_t expire;
 
-    if (when <= 0) {
-        return command_reply_err(conn, "-ERR bad expire \r\n");
-    }
-    when = when * 1000 + nc_msec_now();
-
-    status = store_get(&instance->store, key, &val);
+    status = store_get(&instance->store, key, &val, &expire);
     if (status != NC_OK) {
         return status;
     }
@@ -338,14 +302,29 @@ command_process_expire(struct conn *conn, msg_t *msg)
         return command_reply_num(conn, 0);
     }
 
-    sdsfree(val);
+    /* get expire from args */
+    expire = atoll(msg->argv[2]);
+    if (expire <= 0) {
+        status = command_reply_err(conn, "-ERR bad expire \r\n");
+        goto out;
+    }
+    expire = expire * 1000 + nc_msec_now();
 
-    status = ndb_set_expire(&instance->store, key, when);
+    status = store_set(&instance->store, key, val, expire);
     if (status != NC_OK) {
-        return status;
+        goto out;
     }
 
-    return command_reply_num(conn, 1);
+    status = command_reply_num(conn, 1);
+    if (status != NC_OK) {
+        goto out;
+    }
+
+out:
+    if (val != NULL) {
+        sdsfree(val);
+    }
+    return status;
 }
 
 static rstatus_t
@@ -356,9 +335,9 @@ command_process_ttl(struct conn *conn, msg_t *msg)
     instance_t *instance = srv->owner;
     sds key = msg->argv[1];
     sds val = NULL;
-    int64_t when;
+    int64_t expire;
 
-    status = store_get(&instance->store, key, &val);
+    status = store_get(&instance->store, key, &val, &expire);
     if (status != NC_OK) {
         return status;
     }
@@ -370,26 +349,12 @@ command_process_ttl(struct conn *conn, msg_t *msg)
 
     sdsfree(val);
 
-    status = ndb_get_expire(&instance->store, key, &when);
-    if (status != NC_OK) {
-        return status;
-    }
-
     /* expire not set */
-    if (when == -1) {
-        return command_reply_num(conn, when);
+    if (expire == STORE_DEFAULT_EXPIRE) {
+        return command_reply_num(conn, -1);
     }
 
-    /* expired */
-    if ((when > 0) && (when < nc_msec_now())) {
-        status = del_key_and_clear_expire(&instance->store, key);
-        if (status != NC_OK) {
-            return status;
-        }
-        return command_reply_num(conn, -2);
-    }
-
-    return command_reply_num(conn, (when - nc_msec_now()) / 1000);
+    return command_reply_num(conn, (expire - nc_msec_now()) / 1000);
 }
 
 /*
@@ -427,7 +392,7 @@ command_process_scan(struct conn *conn, msg_t *msg)
                 return command_reply_err(conn, "-ERR bad count\r\n");
             }
             i += 2;
-            /* match not support yet */
+            /* TODO: match not support yet */
             /* } else if (!strcasecmp(msg->argv[i], "match") && msg->argc-i >= 2) { */
             /* match = msg->argv[i+1]; */
             /* i+=2; */
@@ -586,7 +551,7 @@ ndb_conn_recv_done(struct conn *conn)
             } else if (status == NC_EAGAIN) {
                 conn_add_in(conn);
                 break;
-            } else { //TODO: no mem
+            } else { /* TODO: no mem */
                 conn->err = errno;
                 return NC_ERROR;
             }

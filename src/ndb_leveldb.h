@@ -33,8 +33,8 @@ typedef struct store_s {
 rstatus_t store_init(void *owner, store_t *s);
 rstatus_t store_deinit(store_t *s);
 
-rstatus_t store_get(store_t *s, sds key, sds *val);
-rstatus_t store_set(store_t *s, sds key, sds val);
+rstatus_t store_get(store_t *s, sds key, sds *val, int64_t *expire);
+rstatus_t store_set(store_t *s, sds key, sds val, int64_t expire);
 rstatus_t store_del(store_t *s, sds key);
 rstatus_t store_compact(store_t *s);
 rstatus_t store_drop(store_t *s);
@@ -42,6 +42,9 @@ char * store_info(store_t *s);
 
 typedef rstatus_t (*scan_callback_t)(store_t *s, sds key, sds val);
 rstatus_t store_scan(store_t *s, scan_callback_t callback);
+rstatus_t store_eliminate(store_t *s);
+
+#define STORE_DEFAULT_EXPIRE 0
 
 #endif
 

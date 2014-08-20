@@ -136,12 +136,15 @@ store_drop(store_t *s)
     return NC_OK;
 }
 
+#define STORE_NS_KV "S"
+
 rstatus_t
-store_get(store_t *s, sds key, sds *val)
+store_get(store_t *s, sds key, sds *val, int64_t *expire)
 {
     char *t;
     size_t val_len;
     char *err = NULL;
+    rstatus_t status = NC_OK;
 
     t = leveldb_get(s->db, s->roptions, key, sdslen(key), &val_len, &err);
 
@@ -151,32 +154,53 @@ store_get(store_t *s, sds key, sds *val)
         return NC_ERROR;
     }
 
-    if (t != NULL) {
-        *val = sdsnewlen(t, val_len);
-        free(t);
-
-        if (*val == NULL) {
-            return NC_ENOMEM;
-        }
-        return NC_OK;
-    } else {
+    if (t == NULL) {
         *val = NULL;
-        return NC_OK;
+        goto out;
     }
+
+    ASSERT(t[0] == STORE_NS_KV[0]);
+    *expire = *(int64_t*)(t + 1);
+
+    if ((*expire > 0) && (*expire < nc_msec_now())) {
+        status = store_del(s, key);
+        *val = NULL;
+        goto out;
+    }
+
+    *val = sdsnewlen(t + 1 + sizeof(*expire), val_len - 1 - sizeof(*expire));
+
+    if (*val == NULL) {
+        status = NC_ENOMEM;
+    }
+
+out:
+    if (t != NULL) {
+        free(t);
+    }
+    return status;
 }
 
 rstatus_t
-store_set(store_t *s, sds key, sds val)
+store_set(store_t *s, sds key, sds val, int64_t expire)
 {
     char *err = NULL;
+    sds newval;
 
-    leveldb_put(s->db, s->woptions, key, sdslen(key), val, sdslen(val), &err);
+    newval = sdscpylen(sdsempty(), STORE_NS_KV, 1); //prefix
+    newval = sdscatlen(newval, (char *)&expire, sizeof(expire));
+    newval = sdscatlen(newval, val, sdslen(val));
+
+    leveldb_put(s->db, s->woptions, key, sdslen(key), newval, sdslen(newval), &err);
 
     if (err != NULL) {
-        log_warn("store_set return err: %s", err);
+        log_warn("leveldb_put return err: %s", err);
         leveldb_free(err);
+        sdsfree(newval);
         return NC_ERROR;
     }
+
+    sdsfree(newval);
     return NC_OK;
 }
 
@@ -188,7 +212,7 @@ store_del(store_t *s, sds key)
     leveldb_delete(s->db, s->woptions, key, sdslen(key), &err);
 
     if (err != NULL) {
-        log_warn("store_set return err: %s", err);
+        log_warn("leveldb_delete return err: %s", err);
         leveldb_free(err);
         return NC_ERROR;
     }
@@ -230,7 +254,7 @@ store_scan(store_t *s, scan_callback_t callback)
     sds val = sdsempty();
     const char *str;
     size_t len;
-    rstatus_t status;
+    rstatus_t status = NC_OK;
 
     iter = leveldb_create_iterator(s->db, s->roptions);
     leveldb_iter_seek_to_first(iter);
@@ -253,5 +277,40 @@ store_scan(store_t *s, scan_callback_t callback)
 
     leveldb_iter_destroy(iter);
     return NC_OK;
+}
+
+// TODO : fix
+static rstatus_t
+store_eliminate_callback(store_t *s, sds key, sds val)
+{
+    int64_t expire;
+    rstatus_t status = NC_OK;
+
+    expire = atoll(val);
+
+    /* not expire */
+    if (expire > nc_msec_now()) {
+        return NC_OK;
+    }
+
+    /* del expire key */
+    status = store_del(s, key);
+    if (status != NC_OK) {
+        return status;
+    }
+
+    /* [>del real key<] */
+    /* key = sdscpylen(sdsempty(), key + EXPIRE_KEY_PREFIX_LEN, */
+            /* sdslen(key) - EXPIRE_KEY_PREFIX_LEN); */
+    /* status = store_del(s, key); */
+
+    sdsfree(key);
+    return status;
+}
+
+rstatus_t
+store_eliminate(store_t *s)
+{
+    return store_scan(s, store_eliminate_callback);
 }
 
