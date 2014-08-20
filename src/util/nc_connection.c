@@ -133,6 +133,9 @@ conn_deinit(void)
     ASSERT(nfree_connq == 0);
 }
 
+/*
+ * TODO: return size_t , but actually we return NC_ERROR
+ * */
 static ssize_t
 conn_recv_buf(struct conn *conn, void *buf, size_t size)
 {
@@ -229,8 +232,6 @@ conn_recv(struct conn *conn)
         }
     } while (conn->recv_ready);
 
-    /* callback */
-    /* TODO: rethink when should we call recv_done */
     return srv->recv_done(conn);
 }
 
@@ -339,21 +340,7 @@ conn_send(struct conn *conn)
         }
     } while (conn->send_ready);
 
-    /* TODO: rethink when should we call send_done */
     return srv->send_done(conn);
-}
-
-rstatus_t
-conn_add_out(struct conn *conn)
-{
-    rstatus_t status;
-    server_t *srv = conn->owner;
-
-    status = event_add_out(srv->evb, conn);
-    if (status != NC_OK) {
-        conn->err = errno;
-    }
-    return status;
 }
 
 rstatus_t
@@ -396,6 +383,19 @@ conn_close(struct conn *conn)
 }
 
 rstatus_t
+conn_add_out(struct conn *conn)
+{
+    rstatus_t status;
+    server_t *srv = conn->owner;
+
+    status = event_add_out(srv->evb, conn);
+    if (status != NC_OK) {
+        conn->err = errno;
+    }
+    return status;
+}
+
+rstatus_t
 conn_add_in(struct conn *conn)
 {
     rstatus_t status;
@@ -408,6 +408,10 @@ conn_add_in(struct conn *conn)
     return status;
 }
 
+/*
+ * note: we should not call conn_add_in here.
+ * because we may call append many times.
+ */
 rstatus_t
 conn_sendq_append(struct conn *conn, char *pos, size_t n)
 {

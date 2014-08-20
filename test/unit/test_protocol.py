@@ -52,8 +52,8 @@ def test_badreq():
         '\r\n',
         # '*3abcdefg\r\n',
         '*3\r\n*abcde\r\n',
-        '*3\r\n$abcde\r\n',
-        '*3\r\n$3abcde\r\n',
+        # '*3\r\n$abcde\r\n',
+        # '*3\r\n$3abcde\r\n',
         # '*3\r\n$3\r\nabcde\r\n',
     ]
 

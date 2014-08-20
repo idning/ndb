@@ -138,12 +138,6 @@ ndb_init(instance_t *instance)
         return status;
     }
 
-    msg_init();
-
-    command_init();
-
-    cursor_init();
-
     if (instance->daemonize) {
         status = nc_daemonize(1);
         if (status != NC_OK) {
@@ -157,6 +151,10 @@ ndb_init(instance_t *instance)
     if (status != NC_OK) {
         return status;
     }
+
+    msg_init();
+    command_init();
+    cursor_init();
 
     status = store_init(instance, &instance->store);
     if (status != NC_OK) {

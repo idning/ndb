@@ -87,7 +87,7 @@ command_reply_err(struct conn *conn, char *str)
 }
 
 /*
- * prefix is one char, can be *|$|:
+ * prefix is one char, can be '*', '$', ':'
  */
 static rstatus_t
 _command_reply_uint(struct conn *conn, char prefix, int64_t val)
@@ -197,8 +197,8 @@ command_process(struct conn *conn, msg_t *msg)
 
     status = cmd->proc(conn, msg);
     if (status != NC_OK) {                  /* store engine error will got here */
-        log_warn("-ERR cmd->proc got err");
-        return command_reply_err(conn, "-ERR cmd->proc got err\r\n");
+        log_warn("ERR cmd->proc got err");
+        return command_reply_err(conn, "-ERR error on process command\r\n");
     }
 
     return NC_OK;
@@ -578,9 +578,7 @@ ndb_conn_recv_done(struct conn *conn)
         log_info("msg_parse on conn %p return %d", conn, status);
 
         if (status != NC_OK) {
-            if (status == NC_ERROR) { // parse error
-                /* TODO: should we reply protocol error here? */
-                /* conn->err = errno; */
+            if (status == NC_ERROR) { // Protocol error
                 conn->done = 1;
                 command_reply_err(conn, "-ERR Protocol error\r\n");
                 conn_add_out(conn);
