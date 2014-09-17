@@ -95,7 +95,7 @@ ndb_print_done(instance_t *instance)
 }
 
 #define K *1024
-#define M *1024 * 1024
+#define M *1024*1024
 
 static rstatus_t
 ndb_load_conf(instance_t *instance)
@@ -114,7 +114,8 @@ ndb_load_conf(instance_t *instance)
     instance->srv.listen                 = nc_conf_get_str(&instance->conf, "listen", "0.0.0.0:5527");
     instance->srv.backlog                = nc_conf_get_num(&instance->conf, "backlog", 1024);
     instance->srv.mbuf_size              = nc_conf_get_num(&instance->conf, "mbuf_size", 512);
-    instance->store.dbpath               = nc_conf_get_str(&instance->conf, "leveldb.dbpath", "db");
+
+    instance->store.dbpath               = nc_conf_get_str(&instance->conf, "leveldb.dbpath", "data/db");
     instance->store.block_size           = nc_conf_get_num(&instance->conf, "leveldb.block_size", 32 K);
     instance->store.cache_size           = nc_conf_get_num(&instance->conf, "leveldb.cache_size", 1 M);
     instance->store.write_buffer_size    = nc_conf_get_num(&instance->conf, "leveldb.write_buffer_size", 1 M);
@@ -180,7 +181,6 @@ ndb_init(instance_t *instance)
 static rstatus_t
 ndb_deinit(instance_t *instance)
 {
-
     job_deinit();
 
     signal_deinit();

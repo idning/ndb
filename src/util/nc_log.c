@@ -138,7 +138,7 @@ _log(int level, const char *file, int line, int panic, const char *fmt, ...)
 {
     struct logger *l = &logger;
     int len, size, errno_save;
-    char buf[LOG_MAX_LEN], *timestr;
+    char buf[LOG_MAX_LEN];
     va_list args;
     ssize_t n;
     struct timeval tv;

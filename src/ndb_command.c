@@ -99,10 +99,26 @@ _command_reply_uint(struct conn *conn, char prefix, int64_t val)
     return conn_sendq_append(conn, buf, len);
 }
 
+/**
+ *
+ * for a Null Bulk String(non-existence) the protocol is: "$-1\r\n"
+ *      msg = NULL, n = -1;
+ *
+ * for a Empty Bulk String(""), the protocol is: "$0\r\n\r\n"
+ *      msg not NULL, n = 0;
+ *
+ */
 static rstatus_t
 command_reply_bluk(struct conn *conn, char *msg, size_t n)
 {
     rstatus_t status;
+
+    if (n == -1) {
+        ASSERT(msg == NULL);
+        return conn_sendq_append(conn, "$-1\r\n", 5);
+    }
+
+    ASSERT(msg != NULL);
 
     status = _command_reply_uint(conn, '$', n);
     if (status != NC_OK)
@@ -117,12 +133,6 @@ command_reply_bluk(struct conn *conn, char *msg, size_t n)
         return status;
 
     return NC_OK;
-}
-
-static rstatus_t
-command_reply_empty_bluk(struct conn *conn)
-{
-    return conn_sendq_append(conn, "$-1\r\n", 5);
 }
 
 static rstatus_t
@@ -150,7 +160,13 @@ command_reply_bluk_arr(struct conn *conn, struct array *arr)
     n = array_n(arr);
     for (i = 0; i < n; i++) {
         pbluk = array_get(arr, i);
-        status = command_reply_bluk(conn, *pbluk, sdslen(*pbluk));
+
+        if (pbluk == NULL) {
+            status = command_reply_bluk(conn, NULL, -1);  /* Null Bulk */
+        } else {
+            status = command_reply_bluk(conn, *pbluk, sdslen(*pbluk));
+        }
+
         if (status != NC_OK) {
             return status;
         }
@@ -241,7 +257,7 @@ command_process_get(struct conn *conn, msg_t *msg)
 
     /* not exist */
     if (val == NULL) {
-        return command_reply_empty_bluk(conn);
+        return command_reply_bluk(conn, NULL, -1);
     }
 
     status = command_reply_bluk(conn, val, sdslen(val));
