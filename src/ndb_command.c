@@ -109,7 +109,7 @@ _command_reply_uint(struct conn *conn, char prefix, int64_t val)
  *
  */
 static rstatus_t
-command_reply_bluk(struct conn *conn, char *msg, size_t n)
+command_reply_bulk(struct conn *conn, char *msg, size_t n)
 {
     rstatus_t status;
 
@@ -142,12 +142,12 @@ command_reply_array_header(struct conn *conn, uint32_t n)
 }
 
 static rstatus_t
-command_reply_bluk_arr(struct conn *conn, struct array *arr)
+command_reply_bulk_arr(struct conn *conn, struct array *arr)
 {
     rstatus_t status;
     uint32_t i;
     uint32_t n;
-    sds *pbluk;
+    sds *pbulk;
 
     ASSERT(arr != NULL);
     ASSERT(array_n(arr) >= 0);
@@ -159,12 +159,12 @@ command_reply_bluk_arr(struct conn *conn, struct array *arr)
 
     n = array_n(arr);
     for (i = 0; i < n; i++) {
-        pbluk = array_get(arr, i);
+        pbulk = array_get(arr, i);
 
-        if (pbluk == NULL) {
-            status = command_reply_bluk(conn, NULL, -1);  /* Null Bulk */
+        if (pbulk == NULL) {
+            status = command_reply_bulk(conn, NULL, -1);  /* Null Bulk */
         } else {
-            status = command_reply_bluk(conn, *pbluk, sdslen(*pbluk));
+            status = command_reply_bulk(conn, *pbulk, sdslen(*pbulk));
         }
 
         if (status != NC_OK) {
@@ -257,10 +257,10 @@ command_process_get(struct conn *conn, msg_t *msg)
 
     /* not exist */
     if (val == NULL) {
-        return command_reply_bluk(conn, NULL, -1);
+        return command_reply_bulk(conn, NULL, -1);
     }
 
-    status = command_reply_bluk(conn, val, sdslen(val));
+    status = command_reply_bulk(conn, val, sdslen(val));
     sdsfree(val);
     return status;
 
@@ -463,12 +463,12 @@ command_process_scan(struct conn *conn, msg_t *msg)
     } else {
         cursor_id_str = sdsnew("0");
     }
-    status = command_reply_bluk(conn, cursor_id_str, sdslen(cursor_id_str));
+    status = command_reply_bulk(conn, cursor_id_str, sdslen(cursor_id_str));
     if (status != NC_OK) {
         goto cleanup;
     }
 
-    status = command_reply_bluk_arr(conn, arr);
+    status = command_reply_bulk_arr(conn, arr);
     if (status != NC_OK) {
         goto cleanup;
     }
@@ -537,7 +537,7 @@ command_process_info(struct conn *conn, msg_t *msg)
     s = store_info(&instance->store);
     info = sdscatprintf(info, s);
 
-    status = command_reply_bluk(conn, info, sdslen(info));
+    status = command_reply_bulk(conn, info, sdslen(info));
     sdsfree(info);
 
     return status;
