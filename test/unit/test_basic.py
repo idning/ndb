@@ -71,20 +71,21 @@ def test_scan():
     assert set(all_keys) == set(kv.keys())
 
 def test_compact_and_eliminate():
+    if T_LARGE == T_LARGE_DEFAULT:
+        return
+
     conn = get_conn()
 
-    kv = {'kkk-%s' % i : 'vvv-%s' % i for i in range(12000)}
+    kv = {'kkk-%s' % i : 'vvv-%s' % i for i in range(10000*10)}
     for k, v in kv.items():
         conn.set(k, v)
-        # conn.expire(k, 1)
-
-    print conn.linfo()
+        conn.expire(k, 1)
+        if k.endswith('0000'):
+            print conn.linfo()
 
     time.sleep(1)
     conn.eliminate()
-    conn.eliminate()
     conn.compact()
-
     print conn.linfo()
 
 def just_wait():

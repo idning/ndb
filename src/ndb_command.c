@@ -401,15 +401,11 @@ command_process_scan(struct conn *conn, msg_t *msg)
     /* parse args */
     for (i = 2; i < msg->argc;) {
         if (!strcasecmp(msg->argv[i], "count") && msg->argc - i >= 2) {
-            count = atoll(msg->argv[i + 1]); /* TODO: check */
-            if (cursor_id <= 0) {
+            count = atoll(msg->argv[i + 1]);
+            if (count <= 0) {
                 return command_reply_err(conn, "-ERR bad count\r\n");
             }
             i += 2;
-            /* TODO: match not support yet */
-            /* } else if (!strcasecmp(msg->argv[i], "match") && msg->argc-i >= 2) { */
-            /* match = msg->argv[i+1]; */
-            /* i+=2; */
         } else {
             return command_reply_err(conn, "-ERR bad arg \r\n");
         }

@@ -32,12 +32,39 @@ def teardown():
     assert(ndb._alive())
     ndb.stop()
 
-def get_conn():
-    conn = redis.Redis(ndb.host(), ndb.port())
-    conn.flushdb()
+class ndb_conn(redis.Redis):
+    def __init__(self, host, port):
+        redis.Redis.__init__(self, host, port)
 
-    conn.eliminate = lambda: conn.execute_command('eliminate')
-    conn.compact = lambda: conn.execute_command('compact')
-    conn.linfo = lambda: conn.execute_command('linfo')
+    def eliminate(self):
+        self.execute_command('eliminate')
+
+        while True: #wait
+            try:
+                self.execute_command('eliminate')
+                return
+            except:
+                # already runngin
+                pass
+            time.sleep(1)
+
+    def compact(self):
+        self.execute_command('compact')
+
+        while True: #wait
+            try:
+                self.execute_command('compact')
+                return
+            except:
+                # already runngin
+                pass
+            time.sleep(1)
+
+    def linfo(self):
+        return self.execute_command('linfo')
+
+def get_conn():
+    conn = ndb_conn(ndb.host(), ndb.port())
+    conn.flushdb()
 
     return conn
