@@ -10,7 +10,7 @@
 #include "ndb.h"
 
 typedef enum {
-    JOB_TTL = 0,
+    JOB_ELIMINATE = 0,
     JOB_COMPACT,
     JOB_SENTINEL
 } job_type_t;

@@ -14,7 +14,7 @@ void static job_destory(job_t *job);
 rstatus_t
 job_init(instance_t *instance)
 {
-    jobs[JOB_TTL]     = job_create(instance, JOB_TTL);
+    jobs[JOB_ELIMINATE]     = job_create(instance, JOB_ELIMINATE);
     jobs[JOB_COMPACT] = job_create(instance, JOB_COMPACT);
     return NC_OK;
 }
@@ -50,12 +50,17 @@ job_signal(job_type_t type)
     return status;
 }
 
-/* TODO: rename ttl => Elimination and trigger this .*/
-
 static rstatus_t
-job_run_ttl(job_t *job)
+job_run_eliminate(job_t *job)
 {
-    return NC_OK;
+    rstatus_t status;
+    instance_t *instance = job->owner;
+
+    log_info("job_run_eliminate started");
+    status = store_eliminate(&instance->store);
+    log_info("job_run_eliminate ended");
+
+    return status;
 }
 
 static rstatus_t
@@ -84,8 +89,8 @@ job_run(void *arg)
         pthread_mutex_unlock(&job->mutex);
 
         switch (job->type) {
-        case JOB_TTL:
-            job_run_ttl(job);
+        case JOB_ELIMINATE:
+            job_run_eliminate(job);
             break;
         case JOB_COMPACT:
             job_run_compact(job);

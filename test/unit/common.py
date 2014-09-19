@@ -35,4 +35,9 @@ def teardown():
 def get_conn():
     conn = redis.Redis(ndb.host(), ndb.port())
     conn.flushdb()
+
+    conn.eliminate = lambda: conn.execute_command('eliminate')
+    conn.compact = lambda: conn.execute_command('compact')
+    conn.linfo = lambda: conn.execute_command('linfo')
+
     return conn

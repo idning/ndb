@@ -38,13 +38,14 @@ rstatus_t store_set(store_t *s, sds key, sds val, int64_t expire);
 rstatus_t store_del(store_t *s, sds key);
 rstatus_t store_compact(store_t *s);
 rstatus_t store_drop(store_t *s);
-char * store_info(store_t *s);
+sds store_info(store_t *s);
 
-typedef rstatus_t (*scan_callback_t)(store_t *s, sds key, sds val);
+typedef rstatus_t (*scan_callback_t)(store_t *s, sds key, sds raw_val);
 rstatus_t store_scan(store_t *s, scan_callback_t callback);
 rstatus_t store_eliminate(store_t *s);
 
 #define STORE_DEFAULT_EXPIRE 0
+#define STORE_NS_KV "S"
 
 #endif
 

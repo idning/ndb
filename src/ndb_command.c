@@ -10,27 +10,30 @@ static rstatus_t command_process_get(struct conn *conn, msg_t *msg);
 static rstatus_t command_process_set(struct conn *conn, msg_t *msg);
 static rstatus_t command_process_del(struct conn *conn, msg_t *msg);
 static rstatus_t command_process_ping(struct conn *conn, msg_t *msg);
-static rstatus_t command_process_compact(struct conn *conn, msg_t *msg);
 static rstatus_t command_process_expire(struct conn *conn, msg_t *msg);
 static rstatus_t command_process_ttl(struct conn *conn, msg_t *msg);
 static rstatus_t command_process_scan(struct conn *conn, msg_t *msg);
 static rstatus_t command_process_flushdb(struct conn *conn, msg_t *msg);
 static rstatus_t command_process_info(struct conn *conn, msg_t *msg);
+static rstatus_t command_process_compact(struct conn *conn, msg_t *msg);
+static rstatus_t command_process_eliminate(struct conn *conn, msg_t *msg);
 
 static command_t command_table[] = {
-    { "get",     2,  command_process_get     },
-    { "set",     3,  command_process_set     },
-    { "del",     2,  command_process_del     },
-    { "expire",  3,  command_process_expire  },
-    { "ttl",     2,  command_process_ttl     },
+    { "get",        2,  command_process_get     },
+    { "set",        3,  command_process_set     },
+    { "del",        2,  command_process_del     },
+    { "expire",     3,  command_process_expire  },
+    { "ttl",        2,  command_process_ttl     },
 
-    { "scan",    -2, command_process_scan    },
+    { "scan",       -2, command_process_scan    },
 
-    { "ping",    1,  command_process_ping    },
-    { "compact", 1,  command_process_compact },
-    { "flushdb", 1,  command_process_flushdb },
-    { "flushall",1,  command_process_flushdb },
-    { "info",    1,  command_process_info    },
+    { "ping",       1,  command_process_ping    },
+    { "flushdb",    1,  command_process_flushdb },
+    { "flushall",   1,  command_process_flushdb },
+    { "linfo",      1,  command_process_info    },
+
+    { "compact",    1,  command_process_compact },
+    { "eliminate",  1,  command_process_eliminate},
 };
 
 rstatus_t
@@ -505,6 +508,19 @@ command_process_compact(struct conn *conn, msg_t *msg)
 }
 
 static rstatus_t
+command_process_eliminate(struct conn *conn, msg_t *msg)
+{
+    rstatus_t status;
+
+    status = job_signal(JOB_ELIMINATE);
+    if (status == NC_OK) {
+        return command_reply_ok(conn);
+    } else {
+        return command_reply_err(conn, "-ERR eliminate already running\r\n");
+    }
+}
+
+static rstatus_t
 command_process_flushdb(struct conn *conn, msg_t *msg)
 {
     rstatus_t status = NC_OK;
@@ -526,16 +542,19 @@ command_process_info(struct conn *conn, msg_t *msg)
     server_t *srv = conn->owner;
     instance_t *instance = srv->owner;
     sds info = sdsempty();
-    char *s = NULL;
+    sds s = NULL;
 
     info = sdscatprintf(info, "#Store\r\n");
 
     s = store_info(&instance->store);
-    info = sdscatprintf(info, "%s", s);
+    info = sdscatsds(info, s);
 
     status = command_reply_bulk(conn, info, sdslen(info));
-    sdsfree(info);
 
+    sdsfree(info);
+    if (s) {
+        sdsfree(s);
+    }
     return status;
 }
 

@@ -6,7 +6,11 @@
 
 /*
  *
+ * TODO:
+ *
  * we need know leveldb interface here, so should we put this into ndb_leveldb.c
+ *
+ * we nned a hash table for this
  */
 
 #include "ndb.h"

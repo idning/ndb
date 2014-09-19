@@ -70,6 +70,23 @@ def test_scan():
             break
     assert set(all_keys) == set(kv.keys())
 
+def test_compact_and_eliminate():
+    conn = get_conn()
+
+    kv = {'kkk-%s' % i : 'vvv-%s' % i for i in range(12000)}
+    for k, v in kv.items():
+        conn.set(k, v)
+        # conn.expire(k, 1)
+
+    print conn.linfo()
+
+    time.sleep(1)
+    conn.eliminate()
+    conn.eliminate()
+    conn.compact()
+
+    print conn.linfo()
+
 def just_wait():
     time.sleep(60*60)
 

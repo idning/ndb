@@ -10,7 +10,7 @@
 typedef struct cursor_s {
     uint64_t                id;
     void                    *owner;
-    STAILQ_ENTRY(cursor_s)   next;    /* link in cursorq */
+    STAILQ_ENTRY(cursor_s)  next;    /* link in cursorq */
     leveldb_iterator_t      *iter;
 } cursor_t;
 

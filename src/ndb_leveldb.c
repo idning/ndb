@@ -39,7 +39,8 @@ store_init(void *owner, store_t *s)
     leveldb_writeoptions_t *woptions;
 
     s->owner = owner;
-    s->cmp = leveldb_comparator_create(NULL, _cmp_destroy, _cmp_compare, _cmp_name);
+    s->cmp = leveldb_comparator_create(NULL,
+            _cmp_destroy, _cmp_compare, _cmp_name);
     s->cache = leveldb_cache_create_lru(s->cache_size);            /* cache size */
     s->env = leveldb_create_default_env();
 
@@ -60,7 +61,7 @@ store_init(void *owner, store_t *s)
     leveldb_options_set_write_buffer_size(options, s->write_buffer_size);   /* buffer size */
 
     leveldb_options_set_block_restart_interval(options, 8);
-    /* assume leveldb_no_compression = 0, leveldb_snappy_compression = 1 */
+    /* here we assume leveldb_no_compression = 0, leveldb_snappy_compression = 1 */
     leveldb_options_set_compression(options, s->compression);
 
     s->roptions = roptions = leveldb_readoptions_create();
@@ -109,7 +110,7 @@ store_deinit(store_t *s)
 }
 
 /*
- * drop & reopen
+ * close, destory and reopen
  */
 rstatus_t
 store_drop(store_t *s)
@@ -139,15 +140,14 @@ store_drop(store_t *s)
     return NC_OK;
 }
 
-#define STORE_NS_KV "S"
-
 rstatus_t
-store_get(store_t *s, sds key, sds *val, int64_t *expire)
+store_get(store_t *s, sds key, sds *val, int64_t *pexpire)
 {
     char *t;
     size_t val_len;
     char *err = NULL;
     rstatus_t status = NC_OK;
+    int64_t expire;
 
     t = leveldb_get(s->db, s->roptions, key, sdslen(key), &val_len, &err);
 
@@ -163,15 +163,15 @@ store_get(store_t *s, sds key, sds *val, int64_t *expire)
     }
 
     ASSERT(t[0] == STORE_NS_KV[0]);
-    *expire = *(int64_t*)(t + 1);
+    *pexpire = expire = *(int64_t*)(t + 1);
 
-    if ((*expire > 0) && (*expire < nc_msec_now())) {
+    if ((expire > STORE_DEFAULT_EXPIRE) && (expire < nc_msec_now())) {
         status = store_del(s, key);
         *val = NULL;
         goto out;
     }
 
-    *val = sdsnewlen(t + 1 + sizeof(*expire), val_len - 1 - sizeof(*expire));
+    *val = sdsnewlen(t + 1 + sizeof(expire), val_len - 1 - sizeof(expire));
 
     if (*val == NULL) {
         status = NC_ENOMEM;
@@ -229,10 +229,19 @@ store_compact(store_t *s)
     return NC_OK;
 }
 
-char *
+sds
 store_info(store_t *s)
 {
-    return leveldb_property_value(s->db, "leveldb.stats");
+    sds info = sdsempty();
+    char * property;
+
+    property = leveldb_property_value(s->db, "leveldb.stats");
+    info = sdscat(info, property);
+
+    property = leveldb_property_value(s->db, "leveldb.sstables");
+    info = sdscat(info, property);
+
+    return info;
 }
 
 /*
@@ -282,32 +291,20 @@ store_scan(store_t *s, scan_callback_t callback)
     return NC_OK;
 }
 
-// TODO : fix
 static rstatus_t
-store_eliminate_callback(store_t *s, sds key, sds val)
+store_eliminate_callback(store_t *s, sds key, sds raw_val)
 {
     int64_t expire;
     rstatus_t status = NC_OK;
+    char *t = raw_val;
 
-    expire = atoll(val);
+    ASSERT(t[0] == STORE_NS_KV[0]);
+    expire = *(int64_t *)(t + 1);
 
-    /* not expire */
-    if (expire > nc_msec_now()) {
-        return NC_OK;
+    if ((expire > STORE_DEFAULT_EXPIRE) && (expire < nc_msec_now())) {
+        status = store_del(s, key);
     }
 
-    /* del expire key */
-    status = store_del(s, key);
-    if (status != NC_OK) {
-        return status;
-    }
-
-    /* [>del real key<] */
-    /* key = sdscpylen(sdsempty(), key + EXPIRE_KEY_PREFIX_LEN, */
-            /* sdslen(key) - EXPIRE_KEY_PREFIX_LEN); */
-    /* status = store_del(s, key); */
-
-    sdsfree(key);
     return status;
 }
 
