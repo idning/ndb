@@ -396,12 +396,12 @@ conn_add_out(struct conn *conn)
 }
 
 rstatus_t
-conn_add_in(struct conn *conn)
+conn_del_out(struct conn *conn)
 {
     rstatus_t status;
     server_t *srv = conn->owner;
 
-    status = event_add_in(srv->evb, conn);
+    status = event_del_out(srv->evb, conn);
     if (status != NC_OK) {
         conn->err = errno;
     }
@@ -409,7 +409,7 @@ conn_add_in(struct conn *conn)
 }
 
 /*
- * note: we should not call conn_add_in here.
+ * note: we should not call conn_add_out here.
  * because we may call append many times.
  */
 rstatus_t

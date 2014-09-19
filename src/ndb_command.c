@@ -576,7 +576,6 @@ ndb_conn_recv_done(struct conn *conn)
                 conn_add_out(conn);
                 break;
             } else if (status == NC_EAGAIN) {
-                conn_add_in(conn);
                 break;
             } else { /* TODO: no mem */
                 conn->err = errno;
@@ -604,7 +603,6 @@ ndb_conn_send_done(struct conn *conn)
 
     /* TODO: idle and timeout */
 
-    /* renable in */
-    return conn_add_in(conn);
+    return conn_del_out(conn);
 }
 

@@ -65,7 +65,7 @@ void conn_deinit(void);
 rstatus_t conn_recv(struct conn *conn);
 rstatus_t conn_send(struct conn *conn);
 rstatus_t conn_add_out(struct conn *conn);
-rstatus_t conn_add_in(struct conn *conn);
+rstatus_t conn_del_out(struct conn *conn);
 rstatus_t conn_sendq_append(struct conn *conn, char *pos, size_t n);
 
 #endif
