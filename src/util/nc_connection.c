@@ -430,7 +430,7 @@ conn_sendq_append(struct conn *conn, char *pos, size_t n)
         }
 
         len = MIN(mbuf_size(mbuf), n - bytes);
-        mbuf_copy(mbuf, pos + bytes, len);
+        mbuf_copy(mbuf, (uint8_t *)pos + bytes, len);
         bytes += len;
     }
 

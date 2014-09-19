@@ -48,7 +48,7 @@ log_clean()
 {
     char        buf[1024];
 
-    snprintf(buf, sizeof(buf), "rm %s", log_file);
+    nc_scnprintf(buf, sizeof(buf), "rm %s", log_file);
     system(buf);
 }
 

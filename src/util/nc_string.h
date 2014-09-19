@@ -74,9 +74,6 @@ int string_compare(const struct string *s1, const struct string *s2);
 #define nc_strndup(_s, _n)              \
     (uint8_t *)strndup((char *)(_s), (size_t)(_n));
 
-#define nc_snprintf(_s, _n, ...)        \
-    snprintf((char *)(_s), (size_t)(_n), __VA_ARGS__)
-
 #define nc_scnprintf(_s, _n, ...)       \
     _scnprintf((char *)(_s), (size_t)(_n), __VA_ARGS__)
 

@@ -293,7 +293,7 @@ nc_assert(const char *cond, const char *file, int line, int panic)
     }
 }
 
-int
+size_t
 _vscnprintf(char *buf, size_t size, const char *fmt, va_list args)
 {
     int n;
@@ -315,17 +315,17 @@ _vscnprintf(char *buf, size_t size, const char *fmt, va_list args)
     }
 
     if (n < (int) size) {
-        return n;
+        return (size_t)n;
     }
 
-    return (int)(size - 1);
+    return (size - 1);
 }
 
-int
+size_t
 _scnprintf(char *buf, size_t size, const char *fmt, ...)
 {
     va_list args;
-    int n;
+    size_t n;
 
     va_start(args, fmt);
     n = _vscnprintf(buf, size, fmt, args);
@@ -446,7 +446,7 @@ nc_unresolve_addr(struct sockaddr *addr, socklen_t addrlen)
         return "unknown";
     }
 
-    nc_snprintf(unresolve, sizeof(unresolve), "%s:%s", host, service);
+    nc_scnprintf(unresolve, sizeof(unresolve), "%s:%s", host, service);
 
     return unresolve;
 }

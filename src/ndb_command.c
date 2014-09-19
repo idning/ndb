@@ -48,8 +48,8 @@ command_deinit()
 static command_t *
 command_lookup(char *name)
 {
-    uint32_t i;
-    uint32_t ncommands = sizeof(command_table) / sizeof(*command_table);
+    uint64_t i;
+    uint64_t ncommands = sizeof(command_table) / sizeof(*command_table);
 
     for (i = 0; i < ncommands; i++) {
         if (strcmp(command_table[i].name, name) == 0) {
@@ -69,43 +69,44 @@ command_reply_ok(struct conn *conn)
 static rstatus_t
 command_reply_str(struct conn *conn, char *str)
 {
-    uint32_t len = strlen(str);
+    size_t len = strlen(str);
 
     ASSERT(str[0] == '+');
     ASSERT(str[len - 1] == '\n');
-    return conn_sendq_append(conn, str, strlen(str));
+    return conn_sendq_append(conn, str, len);
 }
 
 static rstatus_t
 command_reply_err(struct conn *conn, char *str)
 {
-    uint32_t len = strlen(str);
+    size_t len = strlen(str);
 
     ASSERT(*str == '-');
     ASSERT(str[len - 1] == '\n');
-    return conn_sendq_append(conn, str, strlen(str));
+    return conn_sendq_append(conn, str, len);
 }
 
 /*
- * prefix is one char, can be '*', '$', ':'
+ * prefix is one char,
+ * can be '*', '$', ':'
  */
 static rstatus_t
-_command_reply_uint(struct conn *conn, char prefix, int64_t val)
+_command_reply_int(struct conn *conn, char prefix, int64_t val)
 {
     char buf[NC_UINT64_MAXLEN + 1 + 2];
-    int len;
+    size_t len;
 
-    len = nc_snprintf(buf, sizeof(buf), "%c%"PRIi64"\r\n", prefix, val);
+    len = nc_scnprintf(buf, sizeof(buf), "%c%"PRIi64"\r\n", prefix, val);
     return conn_sendq_append(conn, buf, len);
 }
 
 /**
  *
  * for a Null Bulk String(non-existence) the protocol is: "$-1\r\n"
- *      msg = NULL, n = -1;
+ *      msg = NULL, n = -1
  *
  * for a Empty Bulk String(""), the protocol is: "$0\r\n\r\n"
- *      msg not NULL, n = 0;
+ *      msg = "", n = 0;
  *
  */
 static rstatus_t
@@ -113,14 +114,11 @@ command_reply_bulk(struct conn *conn, char *msg, size_t n)
 {
     rstatus_t status;
 
-    if (n == -1) {
-        ASSERT(msg == NULL);
+    if (msg == NULL) {
         return conn_sendq_append(conn, "$-1\r\n", 5);
     }
 
-    ASSERT(msg != NULL);
-
-    status = _command_reply_uint(conn, '$', n);
+    status = _command_reply_int(conn, '$', n);
     if (status != NC_OK)
         return status;
 
@@ -138,7 +136,7 @@ command_reply_bulk(struct conn *conn, char *msg, size_t n)
 static rstatus_t
 command_reply_array_header(struct conn *conn, uint32_t n)
 {
-    return _command_reply_uint(conn, '*', n);
+    return _command_reply_int(conn, '*', n);
 }
 
 static rstatus_t
@@ -148,6 +146,7 @@ command_reply_bulk_arr(struct conn *conn, struct array *arr)
     uint32_t i;
     uint32_t n;
     sds *pbulk;
+    size_t bulk_len;
 
     ASSERT(arr != NULL);
     ASSERT(array_n(arr) >= 0);
@@ -160,13 +159,9 @@ command_reply_bulk_arr(struct conn *conn, struct array *arr)
     n = array_n(arr);
     for (i = 0; i < n; i++) {
         pbulk = array_get(arr, i);
+        bulk_len = *pbulk ? sdslen(*pbulk) : 0;
 
-        if (pbulk == NULL) {
-            status = command_reply_bulk(conn, NULL, -1);  /* Null Bulk */
-        } else {
-            status = command_reply_bulk(conn, *pbulk, sdslen(*pbulk));
-        }
-
+        status = command_reply_bulk(conn, *pbulk, bulk_len);
         if (status != NC_OK) {
             return status;
         }
@@ -178,7 +173,7 @@ command_reply_bulk_arr(struct conn *conn, struct array *arr)
 static rstatus_t
 command_reply_num(struct conn *conn, int64_t n)
 {
-    return _command_reply_uint(conn, ':', n);
+    return _command_reply_int(conn, ':', n);
 }
 
 rstatus_t
@@ -257,7 +252,7 @@ command_process_get(struct conn *conn, msg_t *msg)
 
     /* not exist */
     if (val == NULL) {
-        return command_reply_bulk(conn, NULL, -1);
+        return command_reply_bulk(conn, NULL, 0);
     }
 
     status = command_reply_bulk(conn, val, sdslen(val));
@@ -529,13 +524,13 @@ command_process_info(struct conn *conn, msg_t *msg)
     rstatus_t status = NC_OK;
     server_t *srv = conn->owner;
     instance_t *instance = srv->owner;
-    char *s;
     sds info = sdsempty();
+    char *s = NULL;
 
     info = sdscatprintf(info, "#Store\r\n");
 
     s = store_info(&instance->store);
-    info = sdscatprintf(info, s);
+    info = sdscatprintf(info, "%s", s);
 
     status = command_reply_bulk(conn, info, sdslen(info));
     sdsfree(info);

@@ -22,7 +22,7 @@ job_init(instance_t *instance)
 rstatus_t
 job_deinit()
 {
-    int i = 0;
+    uint32_t i = 0;
 
     for (i=0; i<JOB_SENTINEL; i++) {
         job_destory(jobs[i]);

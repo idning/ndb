@@ -14,7 +14,7 @@ _cmp_destroy(void *arg)
 static int
 _cmp_compare(void *arg, const char *a, size_t alen, const char *b, size_t blen)
 {
-    int n = (alen < blen) ? alen : blen;
+    size_t n = (alen < blen) ? alen : blen;
     int r = memcmp(a, b, n);
 
     if (r == 0) {
@@ -64,14 +64,16 @@ store_init(void *owner, store_t *s)
     leveldb_options_set_compression(options, s->compression);
 
     s->roptions = roptions = leveldb_readoptions_create();
-    if (s->roptions == NULL)
+    if (s->roptions == NULL) {
         return NC_ENOMEM;
+    }
     leveldb_readoptions_set_verify_checksums(roptions, s->read_verify_checksum);
     leveldb_readoptions_set_fill_cache(roptions, 0);
 
     s->woptions = woptions = leveldb_writeoptions_create();
-    if (s->woptions == NULL)
+    if (s->woptions == NULL) {
         return NC_ENOMEM;
+    }
 
     leveldb_writeoptions_set_sync(woptions, s->write_sync);
 
@@ -89,8 +91,9 @@ store_init(void *owner, store_t *s)
 rstatus_t
 store_deinit(store_t *s)
 {
-    if (s->db == NULL)
+    if (s->db == NULL) {
         return NC_OK;
+    }
 
     leveldb_close(s->db);
     s->db = NULL;

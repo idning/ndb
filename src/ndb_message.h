@@ -10,10 +10,10 @@
 #include "ndb.h"
 
 typedef struct msg_s {
-    void                *owner;
+    void                 *owner;
     uint64_t             id;            /* message id */
-    int                  argc;
-    char               **argv;
+    uint32_t             argc;
+    char                 **argv;
 
     /* for req parser */
     uint32_t             state;         /* running state */

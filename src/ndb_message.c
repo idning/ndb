@@ -43,7 +43,7 @@ msg_get(struct conn *conn)
 void
 msg_put(msg_t *msg)
 {
-    int i;
+    uint32_t i;
 
     log_verb("put msg %p id %"PRIu64"", msg, msg->id);
 
@@ -58,12 +58,11 @@ msg_put(msg_t *msg)
 }
 
 static sds
-msg_read_len(struct conn *conn, uint32_t len)
+msg_read_len(struct conn *conn, size_t len)
 {
     sds s = NULL;
     struct mbuf *mbuf, *nbuf;
 
-    log_debug("msg_read_len on conn:%p len:%d", conn, len);
     /* TODO */
     if (conn->recv_queue_bytes < len) {
         return NULL;
@@ -110,7 +109,7 @@ static sds
 msg_read_line(struct conn *conn)
 {
     uint8_t *p;
-    uint32_t len = 0;
+    size_t len = 0;
     struct mbuf *mbuf, *nbuf;
 
     mbuf = STAILQ_FIRST(&conn->recv_queue);
