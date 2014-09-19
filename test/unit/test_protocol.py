@@ -60,3 +60,19 @@ def test_badreq():
     for req in reqs:
         _test_bad(req)
 
+
+def test_wrong_argc():
+    s = get_conn()
+
+    s.sendall('*1\r\n$3\r\nGET\r\n')
+    data = s.recv(10000)
+    print data
+
+    # assert('' == s.recv(1000))  # peer is closed
+    assert(data.startswith('-ERR wrong number of arguments'))
+
+    s.sendall('*3\r\n$3\r\nSET\r\n$5\r\nkkkkk\r\n$5\r\nvvvvv\r\n')
+    # s.sendall('*2\r\n$3\r\nGET\r\n$5\r\nkkkkk\r\n')
+    data = s.recv(10000)
+    assert(data == '+OK\r\n')
+

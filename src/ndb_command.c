@@ -198,7 +198,7 @@ command_process(struct conn *conn, msg_t *msg)
             return command_reply_err(conn, "-ERR wrong number of arguments\r\n");
         }
     } else {
-        if (msg->argc < cmd->argc) {
+        if (msg->argc < - cmd->argc) {
             return command_reply_err(conn, "-ERR wrong number of arguments\r\n");
         }
     }
@@ -469,8 +469,9 @@ command_process_scan(struct conn *conn, msg_t *msg)
     }
 
 cleanup:
-    if (cursor_id_str)
+    if (cursor_id_str) {
         sdsfree(cursor_id_str);
+    }
     if (arr) {
         count = array_n(arr);
         for (i = 0; i < count; i++) {
