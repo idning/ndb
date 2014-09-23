@@ -17,10 +17,10 @@
 
 #include "nc_util.h"
 
-struct array *
+array_t *
 array_create(uint32_t n, size_t size)
 {
-    struct array *a;
+    array_t *a;
 
     ASSERT(n != 0 && size != 0);
 
@@ -42,32 +42,8 @@ array_create(uint32_t n, size_t size)
     return a;
 }
 
-void
-array_destroy(struct array *a)
-{
-    array_deinit(a);
-    nc_free(a);
-}
-
-rstatus_t
-array_init(struct array *a, uint32_t n, size_t size)
-{
-    ASSERT(n != 0 && size != 0);
-
-    a->elem = nc_alloc(n * size);
-    if (a->elem == NULL) {
-        return NC_ENOMEM;
-    }
-
-    a->nelem = 0;
-    a->size = size;
-    a->nalloc = n;
-
-    return NC_OK;
-}
-
-void
-array_deinit(struct array *a)
+static void
+array_deinit(array_t *a)
 {
     ASSERT(a->nelem == 0);
 
@@ -76,8 +52,15 @@ array_deinit(struct array *a)
     }
 }
 
+void
+array_destroy(array_t *a)
+{
+    array_deinit(a);
+    nc_free(a);
+}
+
 uint32_t
-array_idx(struct array *a, void *elem)
+array_idx(array_t *a, void *elem)
 {
     uint8_t *p, *q;
     uint32_t off, idx;
@@ -96,7 +79,7 @@ array_idx(struct array *a, void *elem)
 }
 
 void *
-array_push(struct array *a)
+array_push(array_t *a)
 {
     void *elem, *new;
     size_t size;
@@ -121,7 +104,7 @@ array_push(struct array *a)
 }
 
 void *
-array_pop(struct array *a)
+array_pop(array_t *a)
 {
     void *elem;
 
@@ -134,7 +117,7 @@ array_pop(struct array *a)
 }
 
 void *
-array_get(struct array *a, uint32_t idx)
+array_get(array_t *a, uint32_t idx)
 {
     void *elem;
 
@@ -147,7 +130,7 @@ array_get(struct array *a, uint32_t idx)
 }
 
 void *
-array_top(struct array *a)
+array_top(array_t *a)
 {
     ASSERT(a->nelem != 0);
 
@@ -155,9 +138,9 @@ array_top(struct array *a)
 }
 
 void
-array_swap(struct array *a, struct array *b)
+array_swap(array_t *a, array_t *b)
 {
-    struct array tmp;
+    array_t tmp;
 
     tmp = *a;
     *a = *b;
@@ -169,7 +152,7 @@ array_swap(struct array *a, struct array *b)
  * compare comparator.
  */
 void
-array_sort(struct array *a, array_compare_t compare)
+array_sort(array_t *a, array_compare_t compare)
 {
     ASSERT(a->nelem != 0);
 
@@ -181,7 +164,7 @@ array_sort(struct array *a, array_compare_t compare)
  * success. On failure short-circuits and returns the error status.
  */
 rstatus_t
-array_each(struct array *a, array_each_t func, void *data)
+array_each(array_t *a, array_each_t func, void *data)
 {
     uint32_t i, nelem;
 
@@ -200,3 +183,4 @@ array_each(struct array *a, array_each_t func, void *data)
 
     return NC_OK;
 }
+

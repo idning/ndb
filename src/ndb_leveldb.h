@@ -11,7 +11,7 @@
 #include <leveldb/c.h>
 
 typedef struct store_s {
-    void                        *owner;
+    void                        *owner;             /* instance */
     char                        *dbpath;
     size_t                      block_size;
     size_t                      cache_size;

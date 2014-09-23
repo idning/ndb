@@ -143,7 +143,7 @@ command_reply_array_header(struct conn *conn, uint32_t n)
 }
 
 static rstatus_t
-command_reply_bulk_arr(struct conn *conn, struct array *arr)
+command_reply_bulk_arr(struct conn *conn, array_t *arr)
 {
     rstatus_t status;
     uint32_t i;
@@ -388,7 +388,7 @@ command_process_scan(struct conn *conn, msg_t *msg)
     /* sds match = NULL; */
     uint32_t i;
 
-    struct array *arr = NULL;
+    array_t *arr = NULL;
     sds *pkey;
     sds key;
 
