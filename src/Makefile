@@ -21,7 +21,7 @@ all: bin
 	@echo "done"
 	@echo "run 'make test'"
 
-%.o: %.c 
+%.o: %.c *.h util/*.h
 	$(CC) -c -o $@ $(CFLAGS) $<
 
 clean:
@@ -31,9 +31,9 @@ clean:
 	find . -name *~ | xargs rm -f
 	#rm -f cscope.*
 
-#kv-server
+#ndb-server
 KV_BIN=ndb
-KV_OBJ=$(UTIL_OBJ) ndb.o ndb_message.o ndb_leveldb.o ndb_command.o ndb_job.o ndb_cursor.o
+KV_OBJ=$(UTIL_OBJ) ndb.o ndb_message.o ndb_leveldb.o ndb_command.o ndb_job.o ndb_cursor.o ndb_oplog.o
 $(KV_BIN): $(KV_OBJ)
 	$(LD) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
@@ -44,7 +44,7 @@ $(TEST_CONF_BIN): $(TEST_CONF_OBJ)
 
 #test-misc
 TEST_ARRAY_BIN=test_misc
-TEST_ARRAY_OBJ=$(UTIL_OBJ) test/test_misc.o
+TEST_ARRAY_OBJ=$(UTIL_OBJ) test/test_misc.o 
 $(TEST_ARRAY_BIN): $(TEST_ARRAY_OBJ)
 	$(LD) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
@@ -54,8 +54,14 @@ TEST_EVENT_OBJ=$(UTIL_OBJ) test/test_event.o
 $(TEST_EVENT_BIN): $(TEST_EVENT_OBJ)
 	$(LD) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
+#test-oplog
+TEST_OPLOG_BIN=test_oplog
+TEST_OPLOG_OBJ=$(UTIL_OBJ) test/test_oplog.o 
+$(TEST_OPLOG_BIN): $(TEST_OPLOG_OBJ) ndb_oplog.c
+	$(LD) $(LDFLAGS) -o $@ $(TEST_OPLOG_OBJ) $(LDLIBS)
+
 #summary
-ALL_BIN=$(KV_BIN) $(TEST_CONF_BIN) $(TEST_ARRAY_BIN) $(TEST_EVENT_BIN)
+ALL_BIN=$(KV_BIN) $(TEST_CONF_BIN) $(TEST_ARRAY_BIN) $(TEST_EVENT_BIN) $(TEST_OPLOG_BIN)
 bin: $(ALL_BIN)
 
 test: bin

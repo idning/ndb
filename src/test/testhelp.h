@@ -46,6 +46,8 @@ int __test_num = 0;
     if(_c) printf("PASSED\n"); else {printf("FAILED\n"); __failed_tests++;} \
 } while(0);
 
+#define TEST_ASSERT test_cond
+
 #define test_report() do { \
     printf("%d tests, %d passed, %d failed \n", __test_num, \
                     __test_num-__failed_tests, __failed_tests); \

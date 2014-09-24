@@ -155,7 +155,7 @@ array_swap(array_t *a, array_t *b)
 void
 array_sort(array_t *a, array_compare_t compare)
 {
-    ASSERT(a->nelem != 0);
+    ASSERT(a->nelem >= 0);
 
     qsort(a->elem, a->nelem, a->size, compare);
 }
@@ -169,7 +169,7 @@ array_each(array_t *a, array_each_t func, void *data)
 {
     uint32_t i, nelem;
 
-    ASSERT(array_n(a) != 0);
+    ASSERT(array_n(a) >= 0);
     ASSERT(func != NULL);
 
     for (i = 0, nelem = array_n(a); i < nelem; i++) {

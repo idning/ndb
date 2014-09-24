@@ -8,7 +8,7 @@
 #include "testhelp.h"
 
 /*********************** test array *************************/
-rstatus_t
+static rstatus_t
 array_check(void *elem, void *data)
 {
     int *pi = elem;
@@ -17,7 +17,7 @@ array_check(void *elem, void *data)
     return 0;
 }
 
-void
+static void
 test_array()
 {
     array_t *arr;
@@ -32,18 +32,18 @@ test_array()
 
     for (i = 0; i < 5; i++) {
         pi = array_get(arr, i);
-        test_cond("assert_n", i == *pi);
+        TEST_ASSERT("assert_n", i == *pi);
     }
-    test_cond("array_n", 5 == array_n(arr));
-
+    TEST_ASSERT("array_n", 5 == array_n(arr));
 
     array_each(arr, array_check, NULL);
+    arr->nelem = 0;
     array_destroy(arr);
 }
 
 /************************* test log *************************/
 static const char *log_file = "/tmp/test_log.log";
-void
+static void
 log_clean()
 {
     char buf[1024];
@@ -52,7 +52,7 @@ log_clean()
     system(buf);
 }
 
-int
+static int
 str_count(const char *haystack, const char *needle)
 {
     char *p = (char *)haystack;
@@ -66,7 +66,7 @@ str_count(const char *haystack, const char *needle)
     return cnt;
 }
 
-void
+static void
 test_log()
 {
     FILE *f;
@@ -84,22 +84,22 @@ test_log()
 
     f = fopen(log_file, "r");
     if (f == NULL) {
-        test_cond("open file", 0);
+        TEST_ASSERT("open file", 0);
     }
     fread(buf, 1, sizeof(buf), f);
 
-    test_cond("cnt-line",
+    TEST_ASSERT("cnt-line",
               3 == str_count(buf, "\n"));
-    test_cond("loga",
+    TEST_ASSERT("loga",
               strstr(buf, "loga"));
 
-    test_cond("debug",
+    TEST_ASSERT("debug",
               !strstr(buf, "debug"));
 
-    test_cond("notice",
+    TEST_ASSERT("notice",
               strstr(buf, "notice"));
 
-    test_cond("warn",
+    TEST_ASSERT("warn",
               strstr(buf, "warn"));
 }
 
@@ -108,7 +108,7 @@ typedef struct mytimer_s {
     /* int           time; */
 } mytimer_t;
 
-void
+static void
 test_rbtree()
 {
     struct rbtree timer_rbt;                    /* timeout rbtree */
@@ -131,13 +131,13 @@ test_rbtree()
     for (i = 0; i < sizeof(timers) / sizeof(uint64_t); i++) {
         nodep = rbtree_min(&timer_rbt);
         printf("key: %" PRIu64 " \n ", nodep->key);
-        test_cond("test_rbtree key",
+        TEST_ASSERT("test_rbtree key",
                   timers_sorted[i] == nodep->key);
         rbtree_delete(&timer_rbt, nodep);
     }
 }
 
-void
+static void
 test_md5()
 {
     /* TODO */
@@ -149,6 +149,9 @@ main()
     test_log();
     test_array();
     test_rbtree();
+    test_md5();
+
+    test_report();
     return 0;
 }
 

@@ -9,7 +9,16 @@
 
 static const char *config_file = "/tmp/test_conf.conf";
 
-void
+static void
+clean()
+{
+    char buf[1024];
+
+    nc_scnprintf(buf, sizeof(buf), "rm %s", config_file);
+    system(buf);
+}
+
+static void
 test_normal_conf()
 {
     FILE *f = fopen(config_file, "w");
@@ -20,24 +29,26 @@ test_normal_conf()
     fclose(f);
 
     if (NC_ERROR == nc_conf_init(&conf, config_file)) {
-        test_cond("conf_init", 0);
+        TEST_ASSERT("conf_init", 0);
         return;
     }
 
-    test_cond("ip",
+    TEST_ASSERT("ip",
               !strcmp("127.0.0.5", nc_conf_get_str(&conf, "ip", "0.0.0.0")));
-    test_cond("ipx",
+    TEST_ASSERT("ipx",
               !strcmp("0.0.0.0", nc_conf_get_str(&conf, "ipx", "0.0.0.0")));
 
-    test_cond("port",
+    TEST_ASSERT("port",
               9527 == nc_conf_get_num(&conf, "port", 0));
-    test_cond("portx",
+    TEST_ASSERT("portx",
               0 == nc_conf_get_num(&conf, "portx", 0));
-    test_cond("port.x",
+    TEST_ASSERT("port.x",
               302 == nc_conf_get_num(&conf, "port.x", 302));
+
+    clean();
 }
 
-void
+static void
 test_empty_conf()
 {
     FILE *f = fopen(config_file, "w");
@@ -46,31 +57,23 @@ test_empty_conf()
     fclose(f);
 
     if (NC_ERROR == nc_conf_init(&conf, config_file)) {
-        test_cond("conf_init", 0);
+        TEST_ASSERT("conf_init", 0);
         return;
     }
 
-    test_cond("ipx",
+    TEST_ASSERT("ipx",
               !strcmp("0.0.0.0", nc_conf_get_str(&conf, "ipx", "0.0.0.0")));
-    test_cond("portx",
+    TEST_ASSERT("portx",
               0 == nc_conf_get_num(&conf, "portx", 0));
+    clean();
 }
 
-void
+static void
 test_notexist_conf()
 {
     nc_conf_t conf;
 
-    test_cond("notexist", NC_ERROR == nc_conf_init(&conf, config_file));
-}
-
-void
-clean()
-{
-    char buf[1024];
-
-    nc_scnprintf(buf, sizeof(buf), "rm %s", config_file);
-    system(buf);
+    TEST_ASSERT("notexist", NC_ERROR == nc_conf_init(&conf, config_file));
 }
 
 int
@@ -79,7 +82,6 @@ main(int argc, const char **argv)
     test_normal_conf();
     test_empty_conf();
 
-    clean();
     test_notexist_conf();
 
     test_report();
