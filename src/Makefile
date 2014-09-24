@@ -25,11 +25,11 @@ all: bin
 	$(CC) -c -o $@ $(CFLAGS) $<
 
 clean:
-	rm -rf $(ALL_BIN) 
-	rm -rf *.o *.gcda *.gcno *.gcov
+	rm -f $(ALL_BIN) 
+	rm -f *.o *.gcda *.gcno *.gcov
 	find . -name *.o | xargs rm -f
 	find . -name *~ | xargs rm -f
-	rm -f tags cscope.*
+	#rm -f cscope.*
 
 #kv-server
 KV_BIN=ndb
@@ -37,14 +37,31 @@ KV_OBJ=$(UTIL_OBJ) ndb.o ndb_message.o ndb_leveldb.o ndb_command.o ndb_job.o ndb
 $(KV_BIN): $(KV_OBJ)
 	$(LD) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
+TEST_CONF_BIN=test_conf
+TEST_CONF_OBJ=$(UTIL_OBJ) test/test_conf.o
+$(TEST_CONF_BIN): $(TEST_CONF_OBJ)
+	$(LD) $(LDFLAGS) -o $@ $^ $(LDLIBS)
+
+#test-misc
+TEST_ARRAY_BIN=test_misc
+TEST_ARRAY_OBJ=$(UTIL_OBJ) test/test_misc.o
+$(TEST_ARRAY_BIN): $(TEST_ARRAY_OBJ)
+	$(LD) $(LDFLAGS) -o $@ $^ $(LDLIBS)
+
+#test-event
+TEST_EVENT_BIN=test_event
+TEST_EVENT_OBJ=$(UTIL_OBJ) test/test_event.o
+$(TEST_EVENT_BIN): $(TEST_EVENT_OBJ)
+	$(LD) $(LDFLAGS) -o $@ $^ $(LDLIBS)
+
 #summary
-ALL_BIN=$(KV_BIN)
+ALL_BIN=$(KV_BIN) $(TEST_CONF_BIN) $(TEST_ARRAY_BIN) $(TEST_EVENT_BIN)
 bin: $(ALL_BIN)
 
 test: bin
 	for number in $(ALL_BIN) ; do \
 		echo $$number ; \
-		./$$number ; \
+		./$$number 2>&1 | grep tests ; \
 	done
 
 .PHONY: test

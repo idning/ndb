@@ -11,7 +11,7 @@
 rstatus_t
 array_check(void *elem, void *data)
 {
-    int       *pi = elem;
+    int *pi = elem;
 
     printf("got pi: %p %d\n", elem, *pi);
     return 0;
@@ -20,9 +20,9 @@ array_check(void *elem, void *data)
 void
 test_array()
 {
-    struct array       *arr;
-    int                 i;
-    int                *pi;
+    array_t *arr;
+    int i;
+    int *pi;
 
     arr = array_create(3, sizeof(int));
     for (i = 0; i < 5; i++) {
@@ -42,11 +42,11 @@ test_array()
 }
 
 /************************* test log *************************/
-static const char       *log_file = "/tmp/test_log.log";
+static const char *log_file = "/tmp/test_log.log";
 void
 log_clean()
 {
-    char        buf[1024];
+    char buf[1024];
 
     nc_scnprintf(buf, sizeof(buf), "rm %s", log_file);
     system(buf);
@@ -55,9 +55,9 @@ log_clean()
 int
 str_count(const char *haystack, const char *needle)
 {
-    char       *p = (char *)haystack;
-    int         cnt = 0;
-    int         needle_len = strlen(needle);
+    char *p = (char *)haystack;
+    int cnt = 0;
+    int needle_len = strlen(needle);
 
     for (; *p; p++) {
         if (0 == strncmp(needle, p, needle_len))
@@ -69,8 +69,8 @@ str_count(const char *haystack, const char *needle)
 void
 test_log()
 {
-    FILE       *f;
-    char        buf[1024];
+    FILE *f;
+    char buf[1024];
 
     log_init(LOG_NOTICE, (char *)log_file);
     log_clean();
@@ -111,13 +111,13 @@ typedef struct mytimer_s {
 void
 test_rbtree()
 {
-    struct rbtree        timer_rbt;             /* timeout rbtree */
-    struct rbnode        timer_rbs;             /* timeout rbtree sentinel */
-    mytimer_t           *timer;
-    struct rbnode       *nodep;                 /* timeout rbtree sentinel */
-    uint64_t             timers[] = { 1, 5, 3, 2, 8 };
-    uint64_t             timers_sorted[] = { 1, 2, 3, 5, 8 };
-    int                  i;
+    struct rbtree timer_rbt;                    /* timeout rbtree */
+    struct rbnode timer_rbs;                    /* timeout rbtree sentinel */
+    mytimer_t *timer;
+    struct rbnode *nodep;                       /* timeout rbtree sentinel */
+    uint64_t timers[] = { 1, 5, 3, 2, 8 };
+    uint64_t timers_sorted[] = { 1, 2, 3, 5, 8 };
+    int i;
 
     rbtree_init(&timer_rbt, &timer_rbs);
 

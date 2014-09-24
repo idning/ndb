@@ -7,13 +7,13 @@
 #include "nc_util.h"
 #include "testhelp.h"
 
-static const char       *config_file = "/tmp/test_conf.conf";
+static const char *config_file = "/tmp/test_conf.conf";
 
 void
 test_normal_conf()
 {
-    FILE            *f = fopen(config_file, "w");
-    nc_conf_t        conf;
+    FILE *f = fopen(config_file, "w");
+    nc_conf_t conf;
 
     fprintf(f, "ip = '127.0.0.5'");
     fprintf(f, "port = 9527");
@@ -40,8 +40,8 @@ test_normal_conf()
 void
 test_empty_conf()
 {
-    FILE            *f = fopen(config_file, "w");
-    nc_conf_t        conf;
+    FILE *f = fopen(config_file, "w");
+    nc_conf_t conf;
 
     fclose(f);
 
@@ -59,7 +59,7 @@ test_empty_conf()
 void
 test_notexist_conf()
 {
-    nc_conf_t        conf;
+    nc_conf_t conf;
 
     test_cond("notexist", NC_ERROR == nc_conf_init(&conf, config_file));
 }
@@ -67,7 +67,7 @@ test_notexist_conf()
 void
 clean()
 {
-    char        buf[1024];
+    char buf[1024];
 
     nc_scnprintf(buf, sizeof(buf), "rm %s", config_file);
     system(buf);

@@ -34,6 +34,8 @@
 # define NC_HAVE_BACKTRACE 1
 #endif
 
+#define _FILE_OFFSET_BITS 64
+
 typedef enum rstatus_s {
     NC_OK       = 0,
     NC_ERROR    = -1,
@@ -91,6 +93,7 @@ struct stats;
 #include "nc_string.h"
 #include "nc_queue.h"
 #include "nc_log.h"
+#include "nc_file.h"
 #include "nc_util.h"
 
 #include "nc_event.h"

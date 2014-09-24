@@ -100,6 +100,7 @@ array_push(array_t *a)
     elem = (uint8_t *)a->elem + a->size * a->nelem;
     a->nelem++;
 
+    memset(elem, 0, a->size);
     return elem;
 }
 
