@@ -7,7 +7,7 @@
 #ifndef _NDB_OPLOG_H_
 #define _NDB_OPLOG_H_
 
-#include "ndb.h"
+#include "nc_util.h"
 
 #define LOG_FILENAME_PREFIX "log."
 #define IDX_FILENAME_PREFIX "idx."
@@ -47,8 +47,8 @@
  * */
 
 typedef struct oplog_index_s {
-    uint64_t    offset;       /* offset in log file */
-    uint64_t    length;       /* length of the msg */
+    uint64_t    offset;             /* offset in log file */
+    uint64_t    length;             /* length of the msg */
 } oplog_index_t;
 
 typedef struct oplog_segment_s {
@@ -68,16 +68,16 @@ typedef struct oplog_segment_s {
  * in oplog_t
  * we need a hashtable for the mapping from segment to oplog and idx file
  *
- * bynow we use a array_t for this
+ * here we use a array_t for this
  */
 typedef struct oplog_s {
-    void     *owner;            /* instance */
-    char     *oplog_path;         /* dir of oplog segments */
-    uint64_t oplog_segment_size;  /* how many msg in each segment */
-    uint64_t oplog_segment_cnt;   /* how many segment to keep */
+    void     *owner;                /* instance */
+    char     *oplog_path;           /* dir of oplog segments */
+    uint64_t oplog_segment_size;    /* how many msg in each segment */
+    uint64_t oplog_segment_cnt;     /* how many segment to keep */
 
     array_t *segments;
-    uint64_t opid;              /* current oplog write idx */
+    uint64_t opid;                  /* current oplog write idx */
 
 } oplog_t;
 

@@ -94,8 +94,8 @@ ndb_print_done(instance_t *instance)
     loga("ndb-%s done (pid %d)", NDB_VERSION_STRING, instance->pid);
 }
 
-#define K *1024
-#define M *1024*1024
+#define KB *1024
+#define MB *1024*1024
 
 static rstatus_t
 ndb_load_conf(instance_t *instance)
@@ -111,23 +111,28 @@ ndb_load_conf(instance_t *instance)
     instance->daemonize                  = nc_conf_get_num(&instance->conf, "daemonize", false);
     instance->loglevel                   = nc_conf_get_num(&instance->conf, "loglevel", LOG_NOTICE);
     instance->logfile                    = nc_conf_get_str(&instance->conf, "logfile", "log/ndb.log");
+
     instance->srv.listen                 = nc_conf_get_str(&instance->conf, "listen", "0.0.0.0:5527");
     instance->srv.backlog                = nc_conf_get_num(&instance->conf, "backlog", 1024);
     instance->srv.mbuf_size              = nc_conf_get_num(&instance->conf, "mbuf_size", 512);
 
     instance->store.dbpath               = nc_conf_get_str(&instance->conf, "leveldb.dbpath", "data/db");
-    instance->store.block_size           = nc_conf_get_num(&instance->conf, "leveldb.block_size", 32 K);
-    instance->store.cache_size           = nc_conf_get_num(&instance->conf, "leveldb.cache_size", 1 M);
-    instance->store.write_buffer_size    = nc_conf_get_num(&instance->conf, "leveldb.write_buffer_size", 1 M);
+    instance->store.block_size           = nc_conf_get_num(&instance->conf, "leveldb.block_size", 32 KB);
+    instance->store.cache_size           = nc_conf_get_num(&instance->conf, "leveldb.cache_size", 1 MB);
+    instance->store.write_buffer_size    = nc_conf_get_num(&instance->conf, "leveldb.write_buffer_size", 1 MB);
     instance->store.compression          = nc_conf_get_num(&instance->conf, "leveldb.compression", 0);
     instance->store.read_verify_checksum = nc_conf_get_num(&instance->conf, "leveldb.read_verify_checksum", 0);
     instance->store.write_sync           = nc_conf_get_num(&instance->conf, "leveldb.write_sync", 0);
 
+    instance->oplog.oplog_path           = nc_conf_get_str(&instance->conf, "oplog.path", "data/oplog");
+    instance->oplog.oplog_segment_size   = nc_conf_get_num(&instance->conf, "oplog.segment_size", 1024*1024);
+    instance->oplog.oplog_segment_cnt    = nc_conf_get_num(&instance->conf, "oplog.segment_cnt", 100);
+
     return NC_OK;
 }
 
-#undef K
-#undef M
+#undef KB
+#undef MB
 
 static rstatus_t
 ndb_init(instance_t *instance)
@@ -158,6 +163,11 @@ ndb_init(instance_t *instance)
     cursor_init();
 
     status = store_init(instance, &instance->store);
+    if (status != NC_OK) {
+        return status;
+    }
+
+    status = oplog_init(instance, &instance->oplog);
     if (status != NC_OK) {
         return status;
     }
@@ -194,6 +204,8 @@ ndb_deinit(instance_t *instance)
     server_deinit(&instance->srv);
 
     store_deinit(&instance->store);
+
+    oplog_deinit(&instance->oplog);
 
     ndb_print_done(instance);
 

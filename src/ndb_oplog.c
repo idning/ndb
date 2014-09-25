@@ -341,7 +341,8 @@ oplog_init(void *owner, oplog_t *oplog)
 
     oplog->owner = owner;
     oplog->opid = 0;
-    oplog->segments = array_create(100, sizeof(oplog_segment_t));   //TODO: 100
+    oplog->segments = array_create(oplog->oplog_segment_cnt, sizeof(oplog_segment_t));
+    /* note: in array_create(), the first argument is just a hint. */
 
     /* 1. make sure oplog_path is exists */
     if (!fs_is_dir(oplog->oplog_path)) {
