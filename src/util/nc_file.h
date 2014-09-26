@@ -51,9 +51,6 @@ fs_file_size(const char *filename){
 	return st.st_size;
 }
 
-sds fs_file_content(const char *filename);
-
-#if 0
 static inline sds
 fs_file_content(const char *filename){
     sds content;
@@ -86,6 +83,5 @@ fs_file_content(const char *filename){
 
     return content;
 }
-#endif
 
 #endif

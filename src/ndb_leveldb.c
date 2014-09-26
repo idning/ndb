@@ -189,7 +189,7 @@ store_set(store_t *s, sds key, sds val, int64_t expire)
 {
     char *err = NULL;
     sds newval;
-    sds oplog_record;
+    rstatus_t status;
     oplog_t *oplog = &((instance_t *)s->owner)->oplog;
 
     newval = sdscpylen(sdsempty(), STORE_NS_KV, 1); //prefix
@@ -205,6 +205,12 @@ store_set(store_t *s, sds key, sds val, int64_t expire)
         return NC_ERROR;
     }
 
+    status = oplog_append_set(oplog, key, newval);
+    if (status != NC_OK) {
+        sdsfree(newval);
+        return status;
+    }
+
     sdsfree(newval);
     return NC_OK;
 }
@@ -213,6 +219,8 @@ rstatus_t
 store_del(store_t *s, sds key)
 {
     char *err = NULL;
+    rstatus_t status;
+    oplog_t *oplog = &((instance_t *)s->owner)->oplog;
 
     leveldb_delete(s->db, s->woptions, key, sdslen(key), &err);
 
@@ -221,6 +229,12 @@ store_del(store_t *s, sds key)
         leveldb_free(err);
         return NC_ERROR;
     }
+
+    status = oplog_append_del(oplog, key);
+    if (status != NC_OK) {
+        return status;
+    }
+
     return NC_OK;
 }
 
