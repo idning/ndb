@@ -37,3 +37,4 @@ deps/snappy/
 
 *.pyc
 *.log
+/src/test_*
