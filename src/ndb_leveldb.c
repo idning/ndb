@@ -189,6 +189,8 @@ store_set(store_t *s, sds key, sds val, int64_t expire)
 {
     char *err = NULL;
     sds newval;
+    sds oplog_record;
+    oplog_t *oplog = &((instance_t *)s->owner)->oplog;
 
     newval = sdscpylen(sdsempty(), STORE_NS_KV, 1); //prefix
     newval = sdscatlen(newval, (char *)&expire, sizeof(expire));

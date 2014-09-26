@@ -33,8 +33,6 @@
 
 #define SDS_MAX_PREALLOC (1024*1024)
 
-#include "nc_util.h"
-
 typedef char *sds;
 
 struct sdshdr {

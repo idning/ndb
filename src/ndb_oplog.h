@@ -88,7 +88,8 @@ rstatus_t oplog_append(oplog_t *oplog, sds msg);
 sds oplog_get(oplog_t *oplog, uint64_t opid);
 rstatus_t oplog_eliminate(oplog_t *oplog);
 
-rstatus_t oplog_append_msg(oplog_t *oplog, uint32_t argc, char **argv);
+rstatus_t oplog_append_set(oplog_t *oplog, sds key, sds value);
+rstatus_t oplog_append_del(oplog_t *oplog, sds key);
 
 #endif
 /* vim: set expandtab ts=4 sw=4 sts=4 tw=100: */

@@ -103,8 +103,6 @@ oplog_segment_open_w(oplog_t *oplog, oplog_segment_t *seg, uint64_t segment_id)
         goto err;
     }
 
-    /*if log_file is a new file, write 'ndblog\r\n'*/
-
     return NC_OK;
 
 err:
@@ -416,6 +414,7 @@ oplog_append(oplog_t *oplog, sds msg)
         log_error("lseek(%d) failed: %s", seg->log_fd, strerror(errno));
         return NC_ERROR;
     } else if (offset == 0) {
+        /*if log_file is a new file, write LOG_FILE_HEAD */
         n = write(seg->log_fd, LOG_FILE_HEAD, strlen(LOG_FILE_HEAD));
         if (n < 0) {
             log_error("write(%d) failed: %s", seg->log_fd, strerror(errno));
@@ -501,6 +500,66 @@ oplog_get(oplog_t *oplog, uint64_t opid)
     }
 
     return ret;
+}
+
+rstatus_t
+oplog_append_cmd(oplog_t *oplog, uint32_t argc, char **argv)
+{
+    sds s = sdsempty();
+    uint32_t i;
+    sds arg;
+    rstatus_t status;
+
+    s = sdscatprintf(s, "*%u\r\n", argc);
+    for (i = 0; i< argc; i++) {
+        arg = argv[i];
+        s = sdscatprintf(s, "$%u\r\n", (uint32_t)sdslen(arg));
+        s = sdscatsds(s, arg);
+        s = sdscat(s, "\r\n");
+    }
+
+    status = oplog_append(oplog, s);
+    sdsfree(s);
+    return status;
+}
+
+/*
+ * append a SET command
+ */
+rstatus_t
+oplog_append_set(oplog_t *oplog, sds key, sds val)
+{
+    rstatus_t status;
+    sds argv[3];
+    sds cmd = sdsnew("SET");
+
+    argv[0] = cmd;
+    argv[1] = key;
+    argv[2] = val;
+
+    status = oplog_append_cmd(oplog, 3, argv);
+
+    sdsfree(cmd);
+    return status;
+}
+
+/*
+ * append a DEL command
+ */
+rstatus_t
+oplog_append_del(oplog_t *oplog, sds key)
+{
+    rstatus_t status;
+    sds argv[2];
+    sds cmd = sdsnew("DEL");
+
+    argv[0] = cmd;
+    argv[1] = key;
+
+    status = oplog_append_cmd(oplog, 2, argv);
+
+    sdsfree(cmd);
+    return status;
 }
 
 /*
