@@ -17,6 +17,7 @@ static rstatus_t command_process_flushdb(struct conn *conn, msg_t *msg);
 static rstatus_t command_process_info(struct conn *conn, msg_t *msg);
 static rstatus_t command_process_compact(struct conn *conn, msg_t *msg);
 static rstatus_t command_process_eliminate(struct conn *conn, msg_t *msg);
+static rstatus_t command_process_oplog(struct conn *conn, msg_t *msg);
 
 static command_t command_table[] = {
     { "get",        2,  command_process_get     },
@@ -31,6 +32,7 @@ static command_t command_table[] = {
     { "flushdb",    1,  command_process_flushdb },
     { "flushall",   1,  command_process_flushdb },
     { "linfo",      1,  command_process_info    },
+    { "oplog",      2,  command_process_oplog   },
 
     { "compact",    1,  command_process_compact },
     { "eliminate",  1,  command_process_eliminate},
@@ -552,6 +554,18 @@ command_process_info(struct conn *conn, msg_t *msg)
         sdsfree(s);
     }
     return status;
+}
+
+/**
+ *
+ * oplog opid limit
+ */
+static rstatus_t
+command_process_oplog(struct conn *conn, msg_t *msg)
+{
+
+    //TODO
+
 }
 
 rstatus_t

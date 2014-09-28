@@ -140,7 +140,7 @@ oplog_segment_close(oplog_segment_t *seg)
 }
 
 /**
- * do a bsearch and find first pos which is not zero
+ * do a bsearch to find first pos which is not zero
  * lower_bound()
  */
 static uint64_t
@@ -231,8 +231,10 @@ oplog_find_current_segment(oplog_t *oplog)
      * if this segment is full, pos == oplog->oplog_segment_size
      * we will create new segment on next write
      * */
+    /* pos == 0 means that it's a empty segment, we will not see empty segment in our system */
+    ASSERT(pos > 0);
 
-    oplog->opid = (seg->segment_id * oplog->oplog_segment_size) + pos;
+    oplog->opid = (seg->segment_id * oplog->oplog_segment_size) + pos - 1;
     return NC_OK;
 
 }
@@ -398,6 +400,8 @@ oplog_append(oplog_t *oplog, sds msg)
     ssize_t n;
     rstatus_t status;
 
+    oplog->opid++;
+
     status = oplog_create_new_segment_if_needed(oplog);
     if (status != NC_OK) {
         return status;
@@ -434,7 +438,6 @@ oplog_append(oplog_t *oplog, sds msg)
     log_debug("oplog_append write %"PRIu64" bytes @ %"PRIi64" ", n, offset);
     seg->index[oplog->opid % oplog->oplog_segment_size].offset = offset;
     seg->index[oplog->opid % oplog->oplog_segment_size].length = sdslen(msg);
-    oplog->opid++;
 
     return NC_OK;
 }
@@ -461,7 +464,7 @@ oplog_get(oplog_t *oplog, uint64_t opid)
         return NULL;
     }
 
-    if (opid >= oplog->opid) {
+    if (opid > oplog->opid) {
         log_debug("opid: %"PRIu64" not exist", opid);
         return NULL;
     }

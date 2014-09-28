@@ -124,6 +124,7 @@ ndb_load_conf(instance_t *instance)
     instance->store.read_verify_checksum = nc_conf_get_num(&instance->conf, "leveldb.read_verify_checksum", 0);
     instance->store.write_sync           = nc_conf_get_num(&instance->conf, "leveldb.write_sync", 0);
 
+    instance->oplog.enable               = nc_conf_get_num(&instance->conf, "oplog.enable", true);
     instance->oplog.oplog_path           = nc_conf_get_str(&instance->conf, "oplog.path", "data/oplog");
     instance->oplog.oplog_segment_size   = nc_conf_get_num(&instance->conf, "oplog.segment_size", 1024*1024);
     instance->oplog.oplog_segment_cnt    = nc_conf_get_num(&instance->conf, "oplog.segment_cnt", 100);

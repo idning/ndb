@@ -128,7 +128,7 @@ test_oplog_normal()
     _test_oplog_close(oplog);
 
     oplog = _test_oplog_open(false);
-    for (i = 0; i < OPLOG_TEST_NRECORD; i++) {
+    for (i = 1; i <= OPLOG_TEST_NRECORD; i++) {
         getmsg = oplog_get(oplog, i);
         TEST_ASSERT("oplog_get",
                    0 == sdscmp(msg, getmsg));
@@ -142,18 +142,23 @@ test_oplog_close_and_reopen()
     oplog_t *oplog;
     sds msg, getmsg;
     int i;
+    sds dbgmsg ;
 
     oplog = _test_oplog_open(true);
     ASSERT(oplog != NULL);
 
     msg = sdsnew("hello oplog");
     for (i = 0; i < OPLOG_TEST_NRECORD; i++) {
-        TEST_ASSERT("oplog_normal opid",
-                   oplog->opid == i);
-
         oplog_append(oplog, msg);
-        TEST_ASSERT("oplog_normal nsegment",
-                   array_n(oplog->segments) - 1 == i / oplog->oplog_segment_size);
+
+        TEST_ASSERT("oplog_normal opid",
+                   oplog->opid == i+1);
+
+        dbgmsg = sdscatprintf(sdsempty(), "test_oplog_close_and_reopen nsegment(%d) segments: %d",
+                i, array_n(oplog->segments));
+        TEST_ASSERT(dbgmsg,
+                   array_n(oplog->segments) - 1 == (i + 1) / oplog->oplog_segment_size);
+        sdsfree(dbgmsg);
 
         _test_oplog_close(oplog);
         oplog = _test_oplog_open(false);
@@ -161,10 +166,13 @@ test_oplog_close_and_reopen()
 
     _test_oplog_close(oplog);
     oplog = _test_oplog_open(false);
-    for (i = 0; i < OPLOG_TEST_NRECORD; i++) {
+    for (i = 1; i <= OPLOG_TEST_NRECORD; i++) {
         getmsg = oplog_get(oplog, i);
-        TEST_ASSERT("oplog_get",
+        dbgmsg = sdscatprintf(sdsempty(), "oplog_get(%d) msg: %s", i, getmsg);
+
+        TEST_ASSERT(dbgmsg,
                    0 == sdscmp(msg, getmsg));
+        sdsfree(dbgmsg);
         sdsfree(getmsg);
     }
 }
@@ -242,7 +250,7 @@ static void test_oplog_segment_insert_pos()
     seg.nmsg = 10;
     seg.index = nc_zalloc(oplog_segment_index_size(&seg));
 
-    TEST_ASSERT("insert_pos",
+    TEST_ASSERT("insert_pos_start",
               0 == oplog_segment_insert_pos(&seg));
 
     for (i = 0; i < 10; i++) {

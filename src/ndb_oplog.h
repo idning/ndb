@@ -71,10 +71,11 @@ typedef struct oplog_segment_s {
  * here we use a array_t for this
  */
 typedef struct oplog_s {
-    void     *owner;                /* instance */
-    char     *oplog_path;           /* dir of oplog segments */
-    uint64_t oplog_segment_size;    /* how many msg in each segment */
-    uint64_t oplog_segment_cnt;     /* how many segment to keep */
+    void        *owner;             /* instance */
+    bool        enable;             /* enable? */                   //TODO: this has no effect now
+    char        *oplog_path;        /* dir of oplog segments */
+    uint64_t    oplog_segment_size; /* how many msg in each segment */
+    uint64_t    oplog_segment_cnt;  /* how many segment to keep */
 
     array_t *segments;
     uint64_t opid;                  /* current oplog write idx */
@@ -88,6 +89,7 @@ rstatus_t oplog_append(oplog_t *oplog, sds msg);
 sds oplog_get(oplog_t *oplog, uint64_t opid);
 rstatus_t oplog_eliminate(oplog_t *oplog);
 
+/* wrapper api */
 rstatus_t oplog_append_set(oplog_t *oplog, sds key, sds value);
 rstatus_t oplog_append_del(oplog_t *oplog, sds key);
 
