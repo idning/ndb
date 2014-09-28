@@ -81,12 +81,12 @@ def test_compact_and_eliminate():
         conn.set(k, v)
         conn.expire(k, 1)
         if k.endswith('0000'):
-            print conn.linfo()
+            print conn.info()
 
     time.sleep(1)
     conn.eliminate()
     conn.compact()
-    print conn.linfo()
+    print conn.info()
 
 def just_wait():
     time.sleep(60*60)

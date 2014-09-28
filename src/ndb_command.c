@@ -17,7 +17,7 @@ static rstatus_t command_process_flushdb(struct conn *conn, msg_t *msg);
 static rstatus_t command_process_info(struct conn *conn, msg_t *msg);
 static rstatus_t command_process_compact(struct conn *conn, msg_t *msg);
 static rstatus_t command_process_eliminate(struct conn *conn, msg_t *msg);
-static rstatus_t command_process_oplog(struct conn *conn, msg_t *msg);
+static rstatus_t command_process_getop(struct conn *conn, msg_t *msg);
 
 static command_t command_table[] = {
     { "get",        2,  command_process_get     },
@@ -31,8 +31,8 @@ static command_t command_table[] = {
     { "ping",       1,  command_process_ping    },
     { "flushdb",    1,  command_process_flushdb },
     { "flushall",   1,  command_process_flushdb },
-    { "linfo",      1,  command_process_info    },
-    { "oplog",      2,  command_process_oplog   },
+    { "info",       1,  command_process_info    },
+    { "getop",      2,  command_process_getop   },
 
     { "compact",    1,  command_process_compact },
     { "eliminate",  1,  command_process_eliminate},
@@ -263,7 +263,6 @@ command_process_get(struct conn *conn, msg_t *msg)
     status = command_reply_bulk(conn, val, sdslen(val));
     sdsfree(val);
     return status;
-
 }
 
 static rstatus_t
@@ -539,13 +538,24 @@ command_process_info(struct conn *conn, msg_t *msg)
     rstatus_t status = NC_OK;
     server_t *srv = conn->owner;
     instance_t *instance = srv->owner;
+    oplog_t *oplog = &instance->oplog;
     sds info = sdsempty();
     sds s = NULL;
+    uint64_t oplog_first, oplog_last;
 
-    info = sdscatprintf(info, "#Store\r\n");
-
+    /* store */
+    info = sdscatprintf(info, "#store\r\n");
     s = store_info(&instance->store);
+    s = sdsmapchars(s, "\r\n", "##", 2);
+    info = sdscat(info, "leveldb:");
     info = sdscatsds(info, s);
+    info = sdscat(info, "\r\n");
+
+    /* oplog */
+    oplog_range(oplog, &oplog_first, &oplog_last);
+    info = sdscatprintf(info, "#oplog\r\n");
+    info = sdscatprintf(info, "oplog.first:%"PRIu64"\r\n", oplog_first);
+    info = sdscatprintf(info, "oplog.last:%"PRIu64"\r\n", oplog_last);
 
     status = command_reply_bulk(conn, info, sdslen(info));
 
@@ -557,15 +567,31 @@ command_process_info(struct conn *conn, msg_t *msg)
 }
 
 /**
- *
  * oplog opid limit
+ * TODO: support limit
  */
 static rstatus_t
-command_process_oplog(struct conn *conn, msg_t *msg)
+command_process_getop(struct conn *conn, msg_t *msg)
 {
+    rstatus_t status = NC_OK;
+    server_t *srv = conn->owner;
+    instance_t *instance = srv->owner;
+    oplog_t *oplog = &instance->oplog;
+    uint64_t opid;
+    sds op;
 
-    //TODO
+    opid = atoll(msg->argv[1]);
 
+    op = oplog_get(oplog, opid);
+
+    /* not exist */
+    if (op == NULL) {
+        return command_reply_bulk(conn, NULL, 0);
+    }
+
+    status = command_reply_bulk(conn, op, sdslen(op));
+    sdsfree(op);
+    return status;
 }
 
 rstatus_t

@@ -32,6 +32,16 @@ def teardown():
     assert(ndb._alive())
     ndb.stop()
 
+# def gen_set_oplog(k, v, expire):
+    # STORE_NS_KV = "S"
+    # dummy_conn = Connection()
+
+    # return dummy_conn.pack_command(*['SET', k, 'S' + struct.pack('Q', 0) + v])
+
+# def gen_del_oplog(k):
+    # dummy_conn = Connection()
+    # return dummy_conn.pack_command(*['DEL', k])
+
 class ndb_conn(redis.Redis):
     def __init__(self, host, port):
         redis.Redis.__init__(self, host, port)
@@ -62,6 +72,50 @@ class ndb_conn(redis.Redis):
 
     def linfo(self):
         return self.execute_command('linfo')
+
+    def parse_oplog(self, op):
+        import struct
+        import StringIO
+        def readline(fin):
+            line = ''
+            while True:
+                c = fin.read(1)
+                line = line + c
+                if c == '\n':
+                    break
+            return line
+
+        def readint(fin, c):
+            line = readline(fin)
+            assert(line[0] == c)
+            return int(line[1:])
+
+        def readcmd(fin):
+            argc = readint(fin, '*')
+            argv = []
+            for i in range(argc):
+                length = readint(fin, '$')
+                argv.append(fin.read(length))
+                fin.read(2)
+            return argv
+
+        def parse_expire_in_oplog(val):
+            arr = struct.unpack('Q', val[1:9])
+            return arr[0]
+
+        fin = StringIO.StringIO(op)
+        args = readcmd(fin)
+        if args[0] == 'SET':    # SET key value expire
+            args = [args[0],
+                    args[1],
+                    args[2][9:],
+                    parse_expire_in_oplog(args[2]),
+                   ]
+        return args
+
+    def getop(self, opid):
+        op = self.execute_command('getop', opid)
+        return self.parse_oplog(op)
 
 def get_conn():
     conn = ndb_conn(ndb.host(), ndb.port())

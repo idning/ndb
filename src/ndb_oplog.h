@@ -87,6 +87,7 @@ rstatus_t oplog_deinit(oplog_t *oplog);
 
 rstatus_t oplog_append(oplog_t *oplog, sds msg);
 sds oplog_get(oplog_t *oplog, uint64_t opid);
+rstatus_t oplog_range(oplog_t *oplog, uint64_t *first, uint64_t *last);
 rstatus_t oplog_eliminate(oplog_t *oplog);
 
 /* wrapper api */

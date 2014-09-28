@@ -442,6 +442,23 @@ oplog_append(oplog_t *oplog, sds msg)
     return NC_OK;
 }
 
+/*
+ * return oplog range,
+ * [first, last] is all the oplog current saved in oplog
+ * include first and last
+ * */
+rstatus_t
+oplog_range(oplog_t *oplog, uint64_t *first, uint64_t *last)
+{
+    oplog_segment_t *seg0;
+
+    seg0 = array_get(oplog->segments, 0);
+    *first = seg0->segment_id * oplog->oplog_segment_size;
+    *last = oplog->opid;
+
+    return NC_OK;
+}
+
 /**
  * assume segments are continuous
  */
