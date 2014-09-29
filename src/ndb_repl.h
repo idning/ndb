@@ -29,6 +29,7 @@ rstatus_t repl_start(repl_t *repl);
 rstatus_t repl_stop(repl_t *repl);
 rstatus_t repl_set_master(repl_t *repl, char *master);
 rstatus_t repl_info_flush(repl_t *repl);
+rstatus_t repl_run(repl_t *repl);
 
 #endif
 /* vim: set expandtab ts=4 sw=4 sts=4 tw=100: */

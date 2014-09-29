@@ -13,6 +13,7 @@ typedef struct instance_s instance_t;
 #include "ndb_message.h"
 #include "ndb_leveldb.h"
 #include "ndb_oplog.h"
+#include "ndb_repl.h"
 #include "ndb_command.h"
 #include "ndb_job.h"
 #include "ndb_cursor.h"
@@ -21,6 +22,7 @@ struct instance_s {
     server_t            srv;
     store_t             store;
     oplog_t             oplog;
+    repl_t              repl;
 
     bool                daemonize;
     int                 loglevel;                   /* log level */

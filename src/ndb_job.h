@@ -12,6 +12,7 @@
 typedef enum {
     JOB_ELIMINATE = 0,
     JOB_COMPACT,
+    JOB_REPL,
     JOB_SENTINEL
 } job_type_t;
 

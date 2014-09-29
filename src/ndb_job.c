@@ -14,8 +14,9 @@ void static job_destory(job_t *job);
 rstatus_t
 job_init(instance_t *instance)
 {
-    jobs[JOB_ELIMINATE]     = job_create(instance, JOB_ELIMINATE);
+    jobs[JOB_ELIMINATE] = job_create(instance, JOB_ELIMINATE);
     jobs[JOB_COMPACT] = job_create(instance, JOB_COMPACT);
+    jobs[JOB_REPL] = job_create(instance, JOB_REPL);
     return NC_OK;
 }
 
@@ -76,6 +77,19 @@ job_run_compact(job_t *job)
     return status;
 }
 
+static rstatus_t
+job_run_repl(job_t *job)
+{
+    rstatus_t status;
+    instance_t *instance = job->owner;
+
+    log_info("job_run_repl started");
+    status = repl_run(&instance->repl);
+    log_info("job_run_repl ended");
+
+    return status;
+}
+
 static void *
 job_run(void *arg)
 {
@@ -94,6 +108,9 @@ job_run(void *arg)
             break;
         case JOB_COMPACT:
             job_run_compact(job);
+            break;
+        case JOB_REPL:              /* TODO: jog->run(job) */
+            job_run_repl(job);
             break;
         default:
             break;

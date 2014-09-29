@@ -18,6 +18,7 @@ static rstatus_t command_process_info(struct conn *conn, msg_t *msg);
 static rstatus_t command_process_compact(struct conn *conn, msg_t *msg);
 static rstatus_t command_process_eliminate(struct conn *conn, msg_t *msg);
 static rstatus_t command_process_getop(struct conn *conn, msg_t *msg);
+static rstatus_t command_process_slaveof(struct conn *conn, msg_t *msg);
 
 static command_t command_table[] = {
     { "get",        2,  command_process_get     },
@@ -36,6 +37,7 @@ static command_t command_table[] = {
 
     { "compact",    1,  command_process_compact },
     { "eliminate",  1,  command_process_eliminate},
+    { "slaveof",    2,  command_process_slaveof},
 };
 
 rstatus_t
@@ -514,6 +516,52 @@ command_process_eliminate(struct conn *conn, msg_t *msg)
         return command_reply_ok(conn);
     } else {
         return command_reply_err(conn, "-ERR eliminate already running\r\n");
+    }
+}
+
+static repl_t *
+ndb_conn_get_repl(struct conn *conn)
+{
+    server_t *srv = conn->owner;
+    instance_t *instance = srv->owner;
+    return &instance->repl;
+}
+
+static store_t *
+ndb_conn_get_store(struct conn *conn)
+{
+    server_t *srv = conn->owner;
+    instance_t *instance = srv->owner;
+    return &instance->store;
+}
+
+static store_t *
+ndb_conn_get_oplog(struct conn *conn)
+{
+    server_t *srv = conn->owner;
+    instance_t *instance = srv->owner;
+    return &instance->store;
+}
+
+static rstatus_t
+command_process_slaveof(struct conn *conn, msg_t *msg)
+{
+    rstatus_t status;
+    char *master;
+    repl_t *repl = ndb_conn_get_repl(conn);
+
+    master = msg->argv[1];
+    if (0 == strcasecmp(master, "NO ONE")) {     //TODO: const
+        repl_set_master(repl, NULL);
+    } else {
+        repl_set_master(repl, master);
+    }
+
+    status = job_signal(JOB_REPL);
+    if (status == NC_OK) {
+        return command_reply_ok(conn);
+    } else {
+        return command_reply_err(conn, "-ERR repl already running\r\n");
     }
 }
 

@@ -11,20 +11,20 @@ rstatus_t
 repl_init(void *owner, repl_t *repl)
 {
     /* do nothing, what we want to init should in repl_start */
+    return NC_OK;
 }
 
 rstatus_t
 repl_deinit(repl_t *repl)
 {
-
+    return NC_OK;
 }
 
 
 rstatus_t
 repl_start(repl_t *repl)
 {
-
-
+    return NC_OK;
 }
 
 redisContext *
@@ -90,6 +90,7 @@ repl_run(repl_t *repl)
         log_error("can not connection to master, error: %s\n", strerror(errno));
         return NC_ERROR;
     }
+    log_info("repl connected to %s", repl->master);
 
     /* PING master */
     reply = redisCommand(c,"PING");
@@ -103,6 +104,7 @@ repl_run(repl_t *repl)
         if (strcmp(reply->str, "PONG") != 0) {
             log_error("can not ping to master, error: %s\n", strerror(errno));
         }
+        log_debug("repl PING got %s", reply->str);
         freeReplyObject(reply);
 
         usleep(repl->sleep_time * 1000);
@@ -116,4 +118,16 @@ rstatus_t
 repl_info_flush(repl_t *repl)
 {
 
+}
+
+rstatus_t
+repl_set_master(repl_t *repl, char *master)
+{
+    log_info("set master from %s to %s", repl->master, master);
+    if (repl->master) {
+        sdsfree(repl->master);
+    }
+    repl->master = sdsnew(master);
+
+    return NC_OK;
 }
