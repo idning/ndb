@@ -28,10 +28,11 @@ def test_oplog():
     # print int(1000 * (time.time() + 10))
     # print expire
 
-
     #del
     rst = conn.delete(k)
     op = conn.getop(last_oplog + 3)
     assert(op == ['DEL', k])
 
+    op = conn.getop(last_oplog + 4)
+    assert op == None
 

@@ -115,6 +115,8 @@ class ndb_conn(redis.Redis):
 
     def getop(self, opid):
         op = self.execute_command('getop', opid)
+        if not op:
+            return None
         return self.parse_oplog(op)
 
 def get_conn():
