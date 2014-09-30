@@ -390,8 +390,6 @@ command_process_scan(struct conn *conn, msg_t *msg)
     /* sds match = NULL; */
     uint32_t i;
     array_t *arr = NULL;
-    sds *pkey;
-    sds key;
 
     cursor_id = atoll(msg->argv[1]);
     if (cursor_id < 0) {
@@ -425,9 +423,14 @@ command_process_scan(struct conn *conn, msg_t *msg)
     }
 
     for (i = 0; i < count; i++) {
-        key = cursor_next_key(cursor);
+        sds key;
+        sds val;
+        uint64_t expire;
+        sds *pkey;
+
+        status = cursor_next(cursor, &key, &val, &expire);
         /* cursor reach end */
-        if (key == NULL) {
+        if (status != NC_OK) {
             cursor_destory(cursor);
             cursor = NULL;
             break;
@@ -435,6 +438,8 @@ command_process_scan(struct conn *conn, msg_t *msg)
 
         pkey = array_push(arr);
         *pkey = key;
+
+        sdsfree(val);
     }
 
     /* reply */
@@ -463,6 +468,7 @@ cleanup:
         sdsfree(cursor_id_str);
     }
     if (arr) {
+        sds *pkey;
         count = array_n(arr);
         for (i = 0; i < count; i++) {
             pkey = array_get(arr, i);
