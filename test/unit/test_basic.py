@@ -70,6 +70,29 @@ def test_scan():
             break
     assert set(all_keys) == set(kv.keys())
 
+def test_vscan():
+    conn = get_conn()
+
+    kv = {'kkk-%s' % i : 'vvv-%s' % i for i in range(12)}
+    for k, v in kv.items():
+        conn.set(k, v)
+        conn.expire(k, 3)
+
+    all_keys = []
+    cursor = '0'
+    while True:
+        cursor, arr = conn.vscan(cursor)
+        for k, v, e in [arr[i*3:i*3+3] for i in range(len(arr)/3)]:
+            print k, v, e
+            all_keys.append(k)
+            assert(v == kv[k])
+            # print 1000 * (time.time() + 3), e
+            assert(abs(1000 * (time.time() + 3) - int(e)) < 50) # TODO: assert expire
+
+        if '0' == cursor:
+            break
+    assert set(all_keys) == set(kv.keys())
+
 def test_compact_and_eliminate():
     if T_LARGE == T_LARGE_DEFAULT:
         return

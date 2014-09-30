@@ -70,6 +70,9 @@ class ndb_conn(redis.Redis):
                 pass
             time.sleep(1)
 
+    def vscan(self, cursor):
+        return self.execute_command('vscan', cursor)
+
     def linfo(self):
         return self.execute_command('linfo')
 

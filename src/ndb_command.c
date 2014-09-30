@@ -28,6 +28,7 @@ static command_t command_table[] = {
     { "ttl",        2,  command_process_ttl     },
 
     { "scan",       -2, command_process_scan    },
+    { "vscan",      -2, command_process_scan    },
 
     { "ping",       1,  command_process_ping    },
     { "flushdb",    1,  command_process_flushdb },
@@ -387,9 +388,13 @@ command_process_scan(struct conn *conn, msg_t *msg)
     sds cursor_id_str = NULL;
     cursor_t *cursor;
     uint64_t count = 10;        /* default count */
+    bool vscan = 0;
     /* sds match = NULL; */
     uint32_t i;
     array_t *arr = NULL;
+    if (!strcasecmp(msg->argv[0], "vscan")) {
+        vscan = 1;
+    }
 
     cursor_id = atoll(msg->argv[1]);
     if (cursor_id < 0) {
@@ -422,24 +427,48 @@ command_process_scan(struct conn *conn, msg_t *msg)
         goto cleanup;
     }
 
-    for (i = 0; i < count; i++) {
-        sds key;
-        sds val;
-        uint64_t expire;
-        sds *pkey;
+    if (vscan) {
+        for (i = 0; i < count; i++) {
+            sds key;
+            sds val;
+            uint64_t expire;
+            sds *pkey;
 
-        status = cursor_next(cursor, &key, &val, &expire);
-        /* cursor reach end */
-        if (status != NC_OK) {
-            cursor_destory(cursor);
-            cursor = NULL;
-            break;
+            status = cursor_next(cursor, &key, &val, &expire);
+            /* cursor reach end */
+            if (status != NC_OK) {
+                cursor_destory(cursor);
+                cursor = NULL;
+                break;
+            }
+
+            pkey = array_push(arr);     /* key */
+            *pkey = key;
+            pkey = array_push(arr);     /* val */
+            *pkey = val;
+            pkey = array_push(arr);     /* expire */
+            *pkey = sdscatprintf(sdsempty(), "%"PRIu64"", expire);
         }
+    }else {
+        for (i = 0; i < count; i++) {
+            sds key;
+            sds val;
+            uint64_t expire;
+            sds *pkey;
 
-        pkey = array_push(arr);
-        *pkey = key;
+            status = cursor_next(cursor, &key, &val, &expire);
+            /* cursor reach end */
+            if (status != NC_OK) {
+                cursor_destory(cursor);
+                cursor = NULL;
+                break;
+            }
 
-        sdsfree(val);
+            pkey = array_push(arr);
+            *pkey = key;
+
+            sdsfree(val);
+        }
     }
 
     /* reply */

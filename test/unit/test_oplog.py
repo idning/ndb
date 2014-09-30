@@ -24,7 +24,8 @@ def test_oplog():
     rst = conn.expire(k, 10)
     cmd, key, val, expire = conn.getop(last_oplog + 2)
     assert (cmd, key, val) == ('SET', k, v)
-    assert(1000 * (time.time() + 10) - expire < 10)
+    assert(abs(1000 * (time.time() + 10) - expire) < 10)
+
     # print int(1000 * (time.time() + 10))
     # print expire
 
