@@ -105,37 +105,55 @@ repl_full_sync(repl_t *repl, redisContext *c)
 {
     redisReply *reply;
     redisReply *subreply;
-    sds cursor;
-    uint32_t i;
+    sds cursor = sdsnew("0");
+    uint32_t i, keys;
+    uint32_t cnt = 0;
 
     repl->repl_pos = 0; /* TODO: set repl_pos */
 
-    reply = redisCommand(c, "VSCAN 0");
+    while (1) {
+        reply = redisCommand(c, "VSCAN %s", cursor);
 
-    if (reply->type != REDIS_REPLY_ARRAY || reply->elements < 2) {
-        log_warn("VSCAN return unexpected value");
+        if (reply->type != REDIS_REPLY_ARRAY || reply->elements < 2) {
+            log_warn("VSCAN return unexpected value");
+            freeReplyObject(reply);
+            return NC_ERROR;
+        }
+
+        cursor = sdscpy(cursor, reply->element[0]->str);
+        log_debug("repl got cursor: %s", cursor);
+        subreply = reply->element[1];
+
+        if (subreply->type != REDIS_REPLY_ARRAY) {
+            log_warn("VSCAN return unexpected value");
+            freeReplyObject(reply);
+            return NC_ERROR;
+        }
+
+        keys = subreply->elements / 3;
+        for (i = 0; i < keys; i++) {
+            sds key = sdsnewlen(subreply->element[i*3+0]->str, subreply->element[i*3+0]->len);
+            sds val = sdsnewlen(subreply->element[i*3+1]->str, subreply->element[i*3+1]->len);
+            uint64_t expire = atoll(subreply->element[i*3+2]->str);
+
+            log_debug("repl got kve: %u %s %s %"PRIu64"", i, key, val, expire);
+            cnt++;
+        }
+
         freeReplyObject(reply);
-        return NC_ERROR;
+        if (atoi(cursor) == 0) {
+            break;
+        }
     }
 
-    cursor = sdsnew(reply->element[0]->str);
-    subreply = reply->element[1];
-
-    if (subreply->type != REDIS_REPLY_ARRAY) {
-        log_warn("VSCAN return unexpected value");
-        freeReplyObject(reply);
-        return NC_ERROR;
-    }
-
-    for (i = 0; i < subreply->elements; i++) {
-        log_debug("got kve: %u %s\n", i, subreply->element[i]->str);
-    }
+    log_notice("repl full sync done, %u keys synced", cnt);
+    return NC_OK;
 }
 
 static rstatus_t
 repl_sync_op(repl_t *repl, redisContext *c)
 {
-
+    return NC_OK;
 }
 
 rstatus_t
