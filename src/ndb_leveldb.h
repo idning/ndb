@@ -40,7 +40,7 @@ rstatus_t store_compact(store_t *s);
 rstatus_t store_drop(store_t *s);
 sds store_info(store_t *s);
 
-typedef rstatus_t (*scan_callback_t)(store_t *s, sds key, sds raw_val);
+typedef rstatus_t (*scan_callback_t)(store_t *s, sds key, sds val, uint64_t expire);
 rstatus_t store_scan(store_t *s, scan_callback_t callback);
 rstatus_t store_eliminate(store_t *s);
 

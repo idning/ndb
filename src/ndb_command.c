@@ -387,14 +387,11 @@ command_process_scan(struct conn *conn, msg_t *msg)
     sds cursor_id_str = NULL;
     cursor_t *cursor;
     uint64_t count = 10;        /* default count */
-
     /* sds match = NULL; */
     uint32_t i;
-
     array_t *arr = NULL;
     sds *pkey;
     sds key;
-
 
     cursor_id = atoll(msg->argv[1]);
     if (cursor_id < 0) {
@@ -415,18 +412,9 @@ command_process_scan(struct conn *conn, msg_t *msg)
     }
 
     /* get cursor */
-    if (cursor_id == 0) {
-        cursor = cursor_create(&instance->store);
-        if (cursor == NULL) {
-            return NC_ENOMEM;
-        }
-        log_notice("create cursor: %"PRIu64"", cursor->id);
-    } else {
-        cursor = cursor_get(cursor_id);
-        if (cursor == NULL) {
-            return command_reply_err(conn, "-ERR cursor not exist\r\n");
-        }
-        log_notice("find cursor: %"PRIu64"", cursor->id);
+    cursor = cursor_get(&instance->store, cursor_id);
+    if (cursor == NULL) {
+        return command_reply_err(conn, "-ERR cursor not exist\r\n");
     }
 
     /* scan */

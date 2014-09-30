@@ -78,19 +78,57 @@ cursor_destory(cursor_t *cursor)
     return NC_OK;
 }
 
+/*
+ * create or find a cursor
+ *
+ * if cursor_id == 0:   create cursor
+ * else:                find cursor
+ *
+ * */
 cursor_t *
-cursor_get(uint64_t cursor_id)
+cursor_get(store_t *store, uint64_t cursor_id)
 {
     cursor_t *cursor;
+
+    if (cursor_id == 0) {
+        cursor = cursor_create(store);
+        if (cursor == NULL) {
+            return NULL;
+        }
+        log_notice("create cursor: %"PRIu64"", cursor->id);
+        return cursor;
+    }
 
     for (cursor = STAILQ_FIRST(&cursorq); cursor != NULL;
          cursor = STAILQ_NEXT(cursor, next)) {
         if (cursor->id == cursor_id) {
+            log_notice("find cursor got: %"PRIu64"", cursor->id);
             return cursor;
         }
     }
 
     return NULL;
+}
+
+rstatus_t
+cursor_next(cursor_t *cursor, sds *key, sds *val, uint64_t *expire)
+{
+    size_t len;
+    const char *str;
+
+    if (!leveldb_iter_valid(cursor->iter)) {
+        return NC_ERROR;
+    }
+
+    str = leveldb_iter_key(cursor->iter, &len);
+    *key = sdsnewlen(str, len);
+    ASSERT(*key != NULL);            /* TODO: check mem */
+
+    str = leveldb_iter_value(cursor->iter, &len);
+    store_decode_val(str, len, val, expire);
+
+    leveldb_iter_next(cursor->iter);
+    return NC_OK;
 }
 
 sds
@@ -104,9 +142,8 @@ cursor_next_key(cursor_t *cursor)
         return NULL;
     }
 
-    key = sdsempty();
     str = leveldb_iter_key(cursor->iter, &len);
-    key = sdscpylen(key, str, len);  /* TODO: check mem */
+    key = sdscpylen(sdsempty(), str, len);  /* TODO: check mem */
 
     leveldb_iter_next(cursor->iter);
     return key;

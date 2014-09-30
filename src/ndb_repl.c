@@ -27,7 +27,7 @@ repl_start(repl_t *repl)
     return NC_OK;
 }
 
-redisContext *
+static redisContext *
 repl_connect(repl_t *repl)
 {
     redisContext *c = NULL;
@@ -79,11 +79,45 @@ err:
     return NULL;
 }
 
+/* PING master */
+static rstatus_t
+repl_ping(repl_t *repl, redisContext *c)
+{
+    redisReply *reply;
+
+    reply = redisCommand(c,"PING");
+    if (strcmp(reply->str, "PONG") != 0) {
+        log_error("can not ping to master, error: %s\n", strerror(errno));
+        return NC_ERROR;
+    }
+    log_debug("repl PING got %s", reply->str);
+
+    freeReplyObject(reply);
+    return NC_OK;
+}
+
+/*
+ * scan all the object at master.
+ *
+ * */
+static rstatus_t
+repl_full_sync(repl_t *repl, redisContext *c)
+{
+    repl->repl_pos = 0;
+}
+
+static rstatus_t
+repl_sync_op(repl_t *repl, redisContext *c)
+{
+
+}
+
 rstatus_t
 repl_run(repl_t *repl)
 {
     redisContext *c;
     redisReply *reply;
+    rstatus_t status;
 
     c = repl_connect(repl);
     if (c == NULL) {
@@ -92,20 +126,18 @@ repl_run(repl_t *repl)
     }
     log_info("repl connected to %s", repl->master);
 
-    /* PING master */
-    reply = redisCommand(c,"PING");
-    if (strcmp(reply->str, "PONG") != 0) {
-        log_error("can not ping to master, error: %s\n", strerror(errno));
-    }
-    freeReplyObject(reply);
+    status = repl_ping(repl, c);
 
     while (true) {
-        reply = redisCommand(c,"PING");
-        if (strcmp(reply->str, "PONG") != 0) {
-            log_error("can not ping to master, error: %s\n", strerror(errno));
+        status = repl_ping(repl, c);
+        if (status != NC_OK) {
+            //TODO: reconnect
         }
-        log_debug("repl PING got %s", reply->str);
-        freeReplyObject(reply);
+
+        status = repl_sync_op(repl, c);
+        if (status != NC_OK) {
+            //TODO: reconnect
+        }
 
         usleep(repl->sleep_time * 1000);
     }

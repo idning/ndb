@@ -21,7 +21,7 @@ rstatus_t cursor_init();
 rstatus_t cursor_deinit();
 cursor_t * cursor_create(store_t *store);
 rstatus_t cursor_destory(cursor_t *cursor);
-cursor_t * cursor_get(uint64_t cursor_id);
+cursor_t * cursor_get(store_t *store, uint64_t cursor_id);
 sds cursor_next_key(cursor_t *cursor);
 
 #endif

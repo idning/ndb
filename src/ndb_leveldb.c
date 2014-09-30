@@ -141,15 +141,27 @@ store_drop(store_t *s)
 }
 
 rstatus_t
-store_get(store_t *s, sds key, sds *val, int64_t *pexpire)
+store_decode_val(const char *str, size_t len, sds *val, uint64_t *expire)
 {
-    char *t;
-    size_t val_len;
+    ASSERT(str[0] == STORE_NS_KV[0]);
+    ASSERT(len >= 1 + sizeof(expire));
+
+    *expire = *(int64_t*)(str + 1);
+    *val = sdsnewlen(str + 1 + sizeof(expire), len - 1 - sizeof(expire));
+    ASSERT(*val != NULL);            /* TODO: check mem */
+
+    return NC_OK;
+}
+
+rstatus_t
+store_get(store_t *s, sds key, sds *val, int64_t *expire)
+{
+    char *str;
+    size_t len;
     char *err = NULL;
     rstatus_t status = NC_OK;
-    int64_t expire;
 
-    t = leveldb_get(s->db, s->roptions, key, sdslen(key), &val_len, &err);
+    str = leveldb_get(s->db, s->roptions, key, sdslen(key), &len, &err);
 
     if (err != NULL) {
         log_warn("store_get return err: %s", err);
@@ -157,29 +169,23 @@ store_get(store_t *s, sds key, sds *val, int64_t *pexpire)
         return NC_ERROR;
     }
 
-    if (t == NULL) {
+    /* not exists */
+    if (str == NULL) {
         *val = NULL;
         goto out;
     }
 
-    ASSERT(t[0] == STORE_NS_KV[0]);
-    *pexpire = expire = *(int64_t*)(t + 1);
+    store_decode_val(str, len, val, expire);
 
-    if ((expire > STORE_DEFAULT_EXPIRE) && (expire < nc_msec_now())) {
+    if ((*expire > STORE_DEFAULT_EXPIRE) && (*expire < nc_msec_now())) {
         status = store_del(s, key);
         *val = NULL;
         goto out;
     }
 
-    *val = sdsnewlen(t + 1 + sizeof(expire), val_len - 1 - sizeof(expire));
-
-    if (*val == NULL) {
-        status = NC_ENOMEM;
-    }
-
 out:
-    if (t != NULL) {
-        free(t);
+    if (str != NULL) {
+        free(str);
     }
     return status;
 }
@@ -271,15 +277,14 @@ store_create_iter(store_t *s, sds startkey)
 
 }
 
-
 */
 
 rstatus_t
 store_scan(store_t *s, scan_callback_t callback)
 {
     leveldb_iterator_t *iter;
-    sds key = sdsempty();
-    sds val = sdsempty();
+    sds key, val;
+    uint64_t expire;
     const char *str;
     size_t len;
     rstatus_t status = NC_OK;
@@ -289,33 +294,33 @@ store_scan(store_t *s, scan_callback_t callback)
 
     for (; leveldb_iter_valid(iter); leveldb_iter_next(iter)) {
         str = leveldb_iter_key(iter, &len);
-        key = sdscpylen(key, str, len);  /* TODO: check mem */
+        key = sdsnewlen(str, len);
+        ASSERT(key != NULL);            /* TODO: check mem */
 
         str = leveldb_iter_value(iter, &len);
-        val = sdscpylen(val, str, len);  /* TODO: check mem */
+        store_decode_val(str, len, &val, &expire);
+        ASSERT(val != NULL);            /* TODO: check mem */
 
-        status = callback(s, key, val);
+        status = callback(s, key, val, expire);
         if (status != NC_OK) {
+            sdsfree(key);
+            sdsfree(val);
+            leveldb_iter_destroy(iter);
             return status;
         }
-    }
 
-    sdsfree(key);
-    sdsfree(val);
+        sdsfree(key);
+        sdsfree(val);
+    }
 
     leveldb_iter_destroy(iter);
     return NC_OK;
 }
 
 static rstatus_t
-store_eliminate_callback(store_t *s, sds key, sds raw_val)
+store_eliminate_callback(store_t *s, sds key, sds val, uint64_t expire)
 {
-    int64_t expire;
     rstatus_t status = NC_OK;
-    char *t = raw_val;
-
-    ASSERT(t[0] == STORE_NS_KV[0]);
-    expire = *(int64_t *)(t + 1);
 
     if ((expire > STORE_DEFAULT_EXPIRE) && (expire < nc_msec_now())) {
         status = store_del(s, key);
