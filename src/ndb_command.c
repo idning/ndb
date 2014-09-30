@@ -38,7 +38,7 @@ static command_t command_table[] = {
 
     { "compact",    1,  command_process_compact },
     { "eliminate",  1,  command_process_eliminate},
-    { "slaveof",    2,  command_process_slaveof},
+    { "slaveof",    3,  command_process_slaveof},
 };
 
 rstatus_t
@@ -570,11 +570,12 @@ static rstatus_t
 command_process_slaveof(struct conn *conn, msg_t *msg)
 {
     rstatus_t status;
-    char *master;
+    sds master;
     repl_t *repl = ndb_conn_get_repl(conn);
 
-    master = msg->argv[1];
-    if (0 == strcasecmp(master, "NO ONE")) {     //TODO: const
+    master = sdscatprintf(sdsempty(), "%s:%s", msg->argv[1], msg->argv[2]);
+
+    if (0 == strcasecmp(master, "NO:ONE")) {     //TODO: const
         repl_set_master(repl, NULL);
     } else {
         repl_set_master(repl, master);
@@ -601,6 +602,8 @@ command_process_flushdb(struct conn *conn, msg_t *msg)
     } else {
         return command_reply_err(conn, "-ERR error on flushdb\r\n");
     }
+
+    //TODO: oplog
 }
 
 static rstatus_t

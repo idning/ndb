@@ -85,7 +85,7 @@ repl_ping(repl_t *repl, redisContext *c)
 {
     redisReply *reply;
 
-    reply = redisCommand(c,"PING");
+    reply = redisCommand(c, "PING");
     if (strcmp(reply->str, "PONG") != 0) {
         log_error("can not ping to master, error: %s\n", strerror(errno));
         return NC_ERROR;
@@ -103,7 +103,33 @@ repl_ping(repl_t *repl, redisContext *c)
 static rstatus_t
 repl_full_sync(repl_t *repl, redisContext *c)
 {
-    repl->repl_pos = 0;
+    redisReply *reply;
+    redisReply *subreply;
+    sds cursor;
+    uint32_t i;
+
+    repl->repl_pos = 0; /* TODO: set repl_pos */
+
+    reply = redisCommand(c, "VSCAN 0");
+
+    if (reply->type != REDIS_REPLY_ARRAY || reply->elements < 2) {
+        log_warn("VSCAN return unexpected value");
+        freeReplyObject(reply);
+        return NC_ERROR;
+    }
+
+    cursor = sdsnew(reply->element[0]->str);
+    subreply = reply->element[1];
+
+    if (subreply->type != REDIS_REPLY_ARRAY) {
+        log_warn("VSCAN return unexpected value");
+        freeReplyObject(reply);
+        return NC_ERROR;
+    }
+
+    for (i = 0; i < subreply->elements; i++) {
+        log_debug("got kve: %u %s\n", i, subreply->element[i]->str);
+    }
 }
 
 static rstatus_t
@@ -121,12 +147,20 @@ repl_run(repl_t *repl)
 
     c = repl_connect(repl);
     if (c == NULL) {
-        log_error("can not connection to master, error: %s\n", strerror(errno));
+        log_error("can not connect to master, error: %s\n", strerror(errno));
         return NC_ERROR;
     }
-    log_info("repl connected to %s", repl->master);
+    log_info("repl connect to %s", repl->master);
 
     status = repl_ping(repl, c);
+    if (status != NC_OK) {
+        //TODO: reconnect
+    }
+
+    status = repl_full_sync(repl, c);
+    if (status != NC_OK) {
+        //TODO: reconnect
+    }
 
     while (true) {
         status = repl_ping(repl, c);

@@ -108,7 +108,7 @@ class NDB(Base):
 
         self.config = config
 
-        self.args['startcmd']     = TT('bin/ndb -c conf/ndb.conf', self.args)
+        self.args['startcmd']     = TT('bin/ndb -c $path/conf/ndb.conf', self.args)
         self.args['runcmd']       = self.args['startcmd']
 
         self.args['conf']         = TT('$path/conf/ndb.conf', self.args)

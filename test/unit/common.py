@@ -112,7 +112,7 @@ class ndb_conn(redis.Redis):
             return None
         return self.parse_oplog(op)
 
-def get_conn():
+def get_conn(ndb = ndb):
     conn = ndb_conn(ndb.host(), ndb.port())
     conn.flushdb()
 

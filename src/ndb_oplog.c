@@ -200,18 +200,18 @@ oplog_find_current_segment(oplog_t *oplog)
 
     /* no segment */
     if (array_n(oplog->segments) == 0) {
-        seg = array_push(oplog->segments);
-        if (seg == NULL) {
-            status = NC_ENOMEM;
-            return status;
-        }
+        /* seg = array_push(oplog->segments); */
+        /* if (seg == NULL) { */
+            /* status = NC_ENOMEM; */
+            /* return status; */
+        /* } */
 
-        status = oplog_segment_open_w(oplog, seg, 0);
-        if (status != NC_OK) {
-            return status;
-        }
+        /* status = oplog_segment_open_w(oplog, seg, 0); */
+        /* if (status != NC_OK) { */
+            /* return status; */
+        /* } */
 
-        oplog->opid = 0;
+        oplog->opid = 0; //TODO: should = -1
         return NC_OK;
     }
 
@@ -245,6 +245,23 @@ oplog_create_new_segment_if_needed(oplog_t *oplog)
     rstatus_t status;
     oplog_segment_t *seg;
     oplog_segment_t *newseg;
+
+
+    if (array_n(oplog->segments) == 0) {
+        log_debug("create new segment with segment_id: %"PRIu64"", 0);
+        newseg = array_push(oplog->segments);
+        if (newseg == NULL) {
+            status = NC_ENOMEM;
+            return status;
+        }
+
+        status = oplog_segment_open_w(oplog, newseg, 0);
+        if (status != NC_OK) {
+            return status;
+        }
+
+        return NC_OK;
+    }
 
     /* get lasts segment */
     seg = array_get(oplog->segments, array_n(oplog->segments) - 1);

@@ -63,6 +63,7 @@ $(TEST_EVENT_BIN): $(TEST_EVENT_OBJ)
 #test-oplog
 TEST_OPLOG_BIN=test_oplog
 TEST_OPLOG_OBJ=$(UTIL_OBJ) test/test_oplog.o 
+test/test_oplog.o: ndb_oplog.c test/test_conf.c
 $(TEST_OPLOG_BIN): $(TEST_OPLOG_OBJ) ndb_oplog.c
 	$(LD) $(LDFLAGS) -o $@ $(TEST_OPLOG_OBJ) $(LDLIBS)
 

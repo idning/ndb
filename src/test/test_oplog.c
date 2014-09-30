@@ -55,8 +55,8 @@ test_oplog_dir_not_exists()
     TEST_ASSERT("dir_not_exists",
               status == NC_OK);
 
-    TEST_ASSERT("dir_not_exists nsegment == 1",
-               array_n(oplog.segments) == 1);
+    TEST_ASSERT("dir_not_exists nsegment == 0",
+               array_n(oplog.segments) == 0);
 
     msg = sdsnew("hello oplog");
     oplog_append(&oplog, msg);
@@ -88,7 +88,7 @@ _test_oplog_open(bool cleanup)
 
     status = oplog_init(NULL, oplog);
     ASSERT(status == NC_OK);
-    ASSERT(array_n(oplog->segments) > 0);
+    ASSERT(array_n(oplog->segments) >= 0);
 
     return oplog;
 }
@@ -118,11 +118,11 @@ test_oplog_normal()
 
     msg = sdsnew("hello oplog");
     for (i = 0; i < OPLOG_TEST_NRECORD; i++) {
-        TEST_ASSERT("oplog_normal opid",
-                   oplog->opid == i);
-        TEST_ASSERT("oplog_normal nsegment",
-                   array_n(oplog->segments) - 1 == i / oplog->oplog_segment_size);
         oplog_append(oplog, msg);
+        TEST_ASSERT("oplog_normal opid",
+                   oplog->opid == i+1);
+        TEST_ASSERT("oplog_normal nsegment",
+                   array_n(oplog->segments) - 1 == (i + 1) / oplog->oplog_segment_size);
     }
 
     _test_oplog_close(oplog);

@@ -37,3 +37,24 @@ def test_oplog():
     op = conn.getop(last_oplog + 4)
     assert op == None
 
+def test_repl():
+    conn = get_conn()
+    kv = {'kkk-%s' % i : 'vvv-%s' % i for i in range(12)}
+    for k, v in kv.items():
+        conn.set(k, v)
+        conn.expire(k, 100)
+
+    # setup ndb2
+    ndb2 = NDB('127.0.0.5', 5529, '/tmp/r/ndb-5529/', {'loglevel': T_VERBOSE})
+    ndb2.deploy()
+    ndb2.start()
+
+    conn2 = get_conn(ndb2)
+    conn2.slaveof('%s:%s' % (ndb.host(), ndb.port()))
+
+    #tear down
+    assert(ndb2._alive())
+    ndb2.stop()
+    time.sleep(100)
+
+
