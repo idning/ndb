@@ -211,7 +211,7 @@ store_set(store_t *s, sds key, sds val, int64_t expire)
         return NC_ERROR;
     }
 
-    status = oplog_append_set(oplog, key, newval);
+    status = oplog_append_set(oplog, key, val, expire);
     if (status != NC_OK) {
         sdsfree(newval);
         return status;

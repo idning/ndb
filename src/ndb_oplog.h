@@ -91,7 +91,7 @@ rstatus_t oplog_range(oplog_t *oplog, uint64_t *first, uint64_t *last);
 rstatus_t oplog_eliminate(oplog_t *oplog);
 
 /* wrapper api */
-rstatus_t oplog_append_set(oplog_t *oplog, sds key, sds value);
+rstatus_t oplog_append_set(oplog_t *oplog, sds key, sds val, uint64_t expire);
 rstatus_t oplog_append_del(oplog_t *oplog, sds key);
 
 #endif

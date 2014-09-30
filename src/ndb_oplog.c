@@ -547,19 +547,22 @@ oplog_append_cmd(oplog_t *oplog, uint32_t argc, char **argv)
  * append a SET command
  */
 rstatus_t
-oplog_append_set(oplog_t *oplog, sds key, sds val)
+oplog_append_set(oplog_t *oplog, sds key, sds val, uint64_t expire)
 {
     rstatus_t status;
-    sds argv[3];
+    sds argv[4];
     sds cmd = sdsnew("SET");
+    sds sexpire = sdscatprintf(sdsempty(), "%"PRIu64"", expire);
 
     argv[0] = cmd;
     argv[1] = key;
     argv[2] = val;
+    argv[3] = sexpire;
 
-    status = oplog_append_cmd(oplog, 3, argv);
+    status = oplog_append_cmd(oplog, 4, argv);
 
     sdsfree(cmd);
+    sdsfree(sexpire);
     return status;
 }
 

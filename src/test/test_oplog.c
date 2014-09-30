@@ -220,13 +220,13 @@ test_oplog_append_cmds()
     oplog = _test_oplog_open(true);
     ASSERT(oplog != NULL);
 
-    status = oplog_append_set(oplog, k, v);
+    status = oplog_append_set(oplog, k, v, 0);
     ASSERT(status == NC_OK);
     status = oplog_append_del(oplog, k);
     ASSERT(status == NC_OK);
 
     oplog1 = LOG_FILE_HEAD \
-             "*3\r\n$3\r\nSET\r\n$5\r\nkkkkk\r\n$5\r\naaaaa\r\n" \
+             "*4\r\n$3\r\nSET\r\n$5\r\nkkkkk\r\n$5\r\naaaaa\r\n$1\r\n0\r\n" \
              "*2\r\n$3\r\nDEL\r\n$5\r\nkkkkk\r\n";
 
     seg0 = array_get(oplog->segments, 0);

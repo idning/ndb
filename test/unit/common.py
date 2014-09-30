@@ -102,18 +102,8 @@ class ndb_conn(redis.Redis):
                 fin.read(2)
             return argv
 
-        def parse_expire_in_oplog(val):
-            arr = struct.unpack('Q', val[1:9])
-            return arr[0]
-
         fin = StringIO.StringIO(op)
         args = readcmd(fin)
-        if args[0] == 'SET':    # SET key value expire
-            args = [args[0],
-                    args[1],
-                    args[2][9:],
-                    parse_expire_in_oplog(args[2]),
-                   ]
         return args
 
     def getop(self, opid):

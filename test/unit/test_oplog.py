@@ -18,13 +18,13 @@ def test_oplog():
     rst = conn.set(k, v)
     op = conn.getop(last_oplog + 1)
     print op
-    assert(op == ['SET', k, v, 0])
+    assert(op == ['SET', k, v, '0'])
 
     #expire
     rst = conn.expire(k, 10)
     cmd, key, val, expire = conn.getop(last_oplog + 2)
     assert (cmd, key, val) == ('SET', k, v)
-    assert(abs(1000 * (time.time() + 10) - expire) < 10)
+    assert(abs(1000 * (time.time() + 10) - int(expire)) < 10)
 
     # print int(1000 * (time.time() + 10))
     # print expire
