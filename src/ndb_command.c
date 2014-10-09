@@ -567,6 +567,7 @@ command_process_getop(struct conn *conn, msg_t *msg)
     }
 
     count = array_n(arr);
+    log_info("getop return %"PRIu64" ops ", count);
     status = command_reply_array_header(conn, count);
     if (status != NC_OK) {
         return status;

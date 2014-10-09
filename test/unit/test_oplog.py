@@ -64,7 +64,11 @@ def test_repl():
     #tear down
     assert(ndb2._alive())
 
-    # time.sleep(100)
-    # ndb2.stop()
+    try:
+        time.sleep(100)
+    except:
+        pass
+    finally:
+        ndb2.stop()
 
 

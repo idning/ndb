@@ -95,11 +95,15 @@ repl_ping(repl_t *repl, redisContext *c)
     redisReply *reply;
 
     reply = redisCommand(c, "PING");
+    if (reply == NULL) {
+        log_warn("repl_ping PING return NULL");
+        return NC_ERROR;
+    }
     if (strcmp(reply->str, "PONG") != 0) {
         log_error("can not ping to master, error: %s\n", strerror(errno));
         return NC_ERROR;
     }
-    log_debug("repl PING got %s", reply->str);
+    log_debug("repl_ping PING got %s", reply->str);
 
     freeReplyObject(reply);
     return NC_OK;
@@ -129,7 +133,10 @@ repl_full_sync(repl_t *repl, redisContext *c)
 
     while (1) {
         reply = redisCommand(c, "VSCAN %s", cursor);
-
+        if (reply == NULL) {
+            log_warn("VSCAN return NULL");
+            return NC_ERROR;
+        }
         if (reply->type != REDIS_REPLY_ARRAY || reply->elements < 2) {
             log_warn("VSCAN return unexpected value");
             freeReplyObject(reply);
@@ -170,10 +177,64 @@ repl_full_sync(repl_t *repl, redisContext *c)
 }
 
 static rstatus_t
+repl_apply_op(repl_t *repl, uint32_t argc, sds *argv)
+{
+    log_debug("repl got cmd: %u %s %s", argc, argv[0], argv[1]);
+
+    return NC_OK;
+}
+
+static rstatus_t
 repl_sync_op(repl_t *repl, redisContext *c)
 {
-    /* reply = redisCommand(c, "GETOP %s", repl->opid); */
+    redisReply *reply;
+    redisReply *subreply;
+    uint32_t i, j;
+    sds *argv;
 
+    log_notice("repl_sync_op, call GETOP %"PRIu64" count 10", repl->repl_pos + 1);
+    reply = redisCommand(c, "GETOP %"PRIu64" count 10", repl->repl_pos + 1);
+    if (reply == NULL) {
+        log_warn("GETOP return NULL");
+        return NC_ERROR;
+    }
+    if (reply->type != REDIS_REPLY_ARRAY) {
+        log_warn("GETOP return unexpected value");
+        freeReplyObject(reply);
+        return NC_ERROR;
+    }
+
+    if (reply->elements == 0) {
+        log_warn("no new op @ %"PRIu64"", repl->repl_pos);
+        freeReplyObject(reply);
+        return NC_ERROR;
+    }
+    log_notice("repl_sync_op, got %u ops", reply->elements);
+
+    for (i = 0; i < reply->elements; i++) {
+        subreply = reply->element[i];
+        if (subreply->type != REDIS_REPLY_ARRAY || subreply->elements < 1) {
+            log_warn("GETOP return unexpected value");
+            freeReplyObject(reply);
+            return NC_ERROR;
+        }
+
+        argv = nc_zalloc(sizeof(* argv) * subreply->elements);;
+        for (j = 0; j < subreply->elements; j++) {
+            argv[j] = sdsnewlen(subreply->element[j]->str, subreply->element[j]->len);
+        }
+
+        repl_apply_op(repl, subreply->elements, argv);
+        for (j = 0; j < subreply->elements; j++) {
+            sdsfree(argv[j]);
+        }
+        nc_free(argv);
+    }
+
+    repl->repl_pos += reply->elements;
+
+    log_notice("repl_sync_op, %u cmd synced, new repl_pos: %"PRIu64"", reply->elements, repl->repl_pos);
+    freeReplyObject(reply);
     return NC_OK;
 }
 
@@ -181,7 +242,6 @@ rstatus_t
 repl_run(repl_t *repl)
 {
     redisContext *c; //TODO: put it into repl_t
-    redisReply *reply;
     rstatus_t status;
 
     c = repl_connect(repl);
