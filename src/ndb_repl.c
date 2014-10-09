@@ -27,6 +27,9 @@ repl_start(repl_t *repl)
     return NC_OK;
 }
 
+/**
+ * connect to master with retry
+ */
 static redisContext *
 repl_connect(repl_t *repl)
 {
@@ -79,6 +82,12 @@ err:
     return NULL;
 }
 
+static void
+repl_disconnect(repl_t *repl)
+{
+    //TODO
+}
+
 /* PING master */
 static rstatus_t
 repl_ping(repl_t *repl, redisContext *c)
@@ -93,6 +102,13 @@ repl_ping(repl_t *repl, redisContext *c)
     log_debug("repl PING got %s", reply->str);
 
     freeReplyObject(reply);
+    return NC_OK;
+}
+
+static rstatus_t
+repl_get_master_op_pos(repl_t *repl, redisContext *c)
+{
+
     return NC_OK;
 }
 
@@ -138,6 +154,9 @@ repl_full_sync(repl_t *repl, redisContext *c)
 
             log_debug("repl got kve: %u %s %s %"PRIu64"", i, key, val, expire);
             cnt++;
+
+            sdsfree(key);
+            sdsfree(val);
         }
 
         freeReplyObject(reply);
@@ -153,13 +172,15 @@ repl_full_sync(repl_t *repl, redisContext *c)
 static rstatus_t
 repl_sync_op(repl_t *repl, redisContext *c)
 {
+    /* reply = redisCommand(c, "GETOP %s", repl->opid); */
+
     return NC_OK;
 }
 
 rstatus_t
 repl_run(repl_t *repl)
 {
-    redisContext *c;
+    redisContext *c; //TODO: put it into repl_t
     redisReply *reply;
     rstatus_t status;
 

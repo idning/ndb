@@ -18,11 +18,12 @@ def test_oplog():
     rst = conn.set(k, v)
     op = conn.getop(last_oplog + 1)
     print op
-    assert(op == ['SET', k, v, '0'])
+    assert(op[0] == ['SET', k, v, '0'])
 
     #expire
     rst = conn.expire(k, 10)
-    cmd, key, val, expire = conn.getop(last_oplog + 2)
+    op = conn.getop(last_oplog + 2)
+    cmd, key, val, expire = op[0]
     assert (cmd, key, val) == ('SET', k, v)
     assert(abs(1000 * (time.time() + 10) - int(expire)) < 10)
 
@@ -32,10 +33,18 @@ def test_oplog():
     #del
     rst = conn.delete(k)
     op = conn.getop(last_oplog + 3)
-    assert(op == ['DEL', k])
+    assert(op[0] == ['DEL', k])
 
     op = conn.getop(last_oplog + 4)
     assert op == None
+
+    op = conn.getop(last_oplog + 1)
+    print op
+    assert len(op) == 3
+
+    op = conn.getop(last_oplog + 1, 2)
+    print op
+    assert len(op) == 2
 
 def test_repl():
     conn = get_conn()

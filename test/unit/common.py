@@ -76,41 +76,46 @@ class ndb_conn(redis.Redis):
     def linfo(self):
         return self.execute_command('linfo')
 
-    def parse_oplog(self, op):
-        import struct
-        import StringIO
-        def readline(fin):
-            line = ''
-            while True:
-                c = fin.read(1)
-                line = line + c
-                if c == '\n':
-                    break
-            return line
+    # def parse_oplog(self, op):
+        # import struct
+        # import StringIO
+        # def readline(fin):
+            # line = ''
+            # while True:
+                # c = fin.read(1)
+                # line = line + c
+                # if c == '\n':
+                    # break
+            # return line
 
-        def readint(fin, c):
-            line = readline(fin)
-            assert(line[0] == c)
-            return int(line[1:])
+        # def readint(fin, c):
+            # line = readline(fin)
+            # assert(line[0] == c)
+            # return int(line[1:])
 
-        def readcmd(fin):
-            argc = readint(fin, '*')
-            argv = []
-            for i in range(argc):
-                length = readint(fin, '$')
-                argv.append(fin.read(length))
-                fin.read(2)
-            return argv
+        # def readcmd(fin):
+            # argc = readint(fin, '*')
+            # argv = []
+            # for i in range(argc):
+                # length = readint(fin, '$')
+                # argv.append(fin.read(length))
+                # fin.read(2)
+            # return argv
 
-        fin = StringIO.StringIO(op)
-        args = readcmd(fin)
-        return args
+        # fin = StringIO.StringIO(op)
+        # args = readcmd(fin)
+        # return args
 
-    def getop(self, opid):
-        op = self.execute_command('getop', opid)
+    def getop(self, opid, count=0):
+        if count:
+            op = self.execute_command('getop', opid, 'count', count)
+        else:
+            op = self.execute_command('getop', opid)
+
         if not op:
             return None
-        return self.parse_oplog(op)
+        # print op
+        return op
 
 def get_conn(ndb = ndb):
     conn = ndb_conn(ndb.host(), ndb.port())

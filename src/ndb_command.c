@@ -28,13 +28,13 @@ static command_t command_table[] = {
     { "ttl",        2,  command_process_ttl     },
 
     { "scan",       -2, command_process_scan    },
-    { "vscan",      -2, command_process_scan    },
+    { "vscan",      -2, command_process_scan    },  /* scan with value and expire */
+    { "getop",      -2, command_process_getop   },
 
     { "ping",       1,  command_process_ping    },
     { "flushdb",    1,  command_process_flushdb },
     { "flushall",   1,  command_process_flushdb },
     { "info",       1,  command_process_info    },
-    { "getop",      2,  command_process_getop   },
 
     { "compact",    1,  command_process_compact },
     { "eliminate",  1,  command_process_eliminate},
@@ -108,6 +108,12 @@ _command_reply_int(struct conn *conn, char prefix, int64_t val)
     return conn_sendq_append(conn, buf, len);
 }
 
+static rstatus_t
+command_reply_raw(struct conn *conn, char *msg, size_t n)
+{
+    return conn_sendq_append(conn, msg, n);
+}
+
 /**
  *
  * for a Null Bulk String(non-existence) the protocol is: "$-1\r\n"
@@ -127,16 +133,19 @@ command_reply_bulk(struct conn *conn, char *msg, size_t n)
     }
 
     status = _command_reply_int(conn, '$', n);
-    if (status != NC_OK)
+    if (status != NC_OK) {
         return status;
+    }
 
-    conn_sendq_append(conn, msg, n);
-    if (status != NC_OK)
+    status = conn_sendq_append(conn, msg, n);
+    if (status != NC_OK) {
         return status;
+    }
 
-    conn_sendq_append(conn, "\r\n", 2);
-    if (status != NC_OK)
+    status = conn_sendq_append(conn, "\r\n", 2);
+    if (status != NC_OK) {
         return status;
+    }
 
     return NC_OK;
 }
@@ -510,6 +519,75 @@ cleanup:
     return status;
 }
 
+/**
+ * GETOP opid [COUNT count]
+ * TODO: support limit
+ */
+static rstatus_t
+command_process_getop(struct conn *conn, msg_t *msg)
+{
+    rstatus_t status = NC_OK;
+    server_t *srv = conn->owner;
+    instance_t *instance = srv->owner;
+    oplog_t *oplog = &instance->oplog;
+    uint64_t opid;
+    uint64_t count = 10;        /* default count */
+    array_t *arr = NULL;
+    sds op;
+    uint32_t i;
+    sds *pelem;
+
+    opid = atoll(msg->argv[1]);
+    /* parse args */
+    for (i = 2; i < msg->argc;) {
+        if (!strcasecmp(msg->argv[i], "count") && msg->argc - i >= 2) {
+            count = atoll(msg->argv[i + 1]);
+            if (count <= 0) {
+                return command_reply_err(conn, "-ERR bad count\r\n");
+            }
+            i += 2;
+        } else {
+            return command_reply_err(conn, "-ERR bad arg \r\n");
+        }
+    }
+
+    arr = array_create(count, sizeof(sds));
+    if (arr == NULL) {
+        status = NC_ENOMEM;
+        goto cleanup;
+    }
+    for (i = 0; i < count; i++) {
+        op = oplog_get(oplog, opid + i);
+        /* not exist */
+        if (op == NULL) {
+            break;
+        }
+        pelem = array_push(arr);
+        *pelem = op;
+    }
+
+    count = array_n(arr);
+    status = command_reply_array_header(conn, count);
+    if (status != NC_OK) {
+        return status;
+    }
+
+    for (i = 0; i < count; i++) {
+        pelem = array_get(arr, i);
+        status = command_reply_raw(conn, *pelem, sdslen(*pelem));
+        if (status != NC_OK) {
+            return status;
+        }
+
+        sdsfree(*pelem);
+    }
+    arr->nelem = 0;  /* a hack here */
+    array_destroy(arr);
+
+cleanup:
+    return status;
+}
+
 static rstatus_t
 command_process_ping(struct conn *conn, msg_t *msg)
 {
@@ -637,34 +715,6 @@ command_process_info(struct conn *conn, msg_t *msg)
     if (s) {
         sdsfree(s);
     }
-    return status;
-}
-
-/**
- * oplog opid limit
- * TODO: support limit
- */
-static rstatus_t
-command_process_getop(struct conn *conn, msg_t *msg)
-{
-    rstatus_t status = NC_OK;
-    server_t *srv = conn->owner;
-    instance_t *instance = srv->owner;
-    oplog_t *oplog = &instance->oplog;
-    uint64_t opid;
-    sds op;
-
-    opid = atoll(msg->argv[1]);
-
-    op = oplog_get(oplog, opid);
-
-    /* not exist */
-    if (op == NULL) {
-        return command_reply_bulk(conn, NULL, 0);
-    }
-
-    status = command_reply_bulk(conn, op, sdslen(op));
-    sdsfree(op);
     return status;
 }
 
