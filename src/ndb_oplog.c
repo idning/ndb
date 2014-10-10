@@ -204,21 +204,11 @@ oplog_find_current_segment(oplog_t *oplog)
 
     /* no segment */
     if (array_n(oplog->segments) == 0) {
-        /* seg = array_push(oplog->segments); */
-        /* if (seg == NULL) { */
-            /* status = NC_ENOMEM; */
-            /* return status; */
-        /* } */
-
-        /* status = oplog_segment_open_w(oplog, seg, 0); */
-        /* if (status != NC_OK) { */
-            /* return status; */
-        /* } */
-
-        oplog->opid = 0; //TODO: should = -1
+        oplog->opid = 0;
         return NC_OK;
     }
 
+    /* last segment */
     seg = array_get(oplog->segments, array_n(oplog->segments) - 1);
     status = oplog_segment_close(seg);
     if (status != NC_OK) {
@@ -250,7 +240,6 @@ oplog_create_new_segment_if_needed(oplog_t *oplog)
     oplog_segment_t *seg;
     oplog_segment_t *newseg;
 
-
     if (array_n(oplog->segments) == 0) {
         log_debug("create new segment with segment_id: %"PRIu64"", 0);
         newseg = array_push(oplog->segments);
@@ -263,6 +252,10 @@ oplog_create_new_segment_if_needed(oplog_t *oplog)
         if (status != NC_OK) {
             return status;
         }
+
+        /* for the first segment, the opid 0 will not be used, we need to fill the index with non-zero */
+        newseg->index[0].offset = -1; //0XFFFF
+        newseg->index[0].length = -1; //0XFFFF
 
         return NC_OK;
     }
@@ -433,7 +426,7 @@ oplog_append(oplog_t *oplog, sds msg)
         return status;
     }
 
-    /* get lasts segment */
+    /* get last segment */
     seg = array_get(oplog->segments, array_n(oplog->segments) - 1);
     ASSERT(seg->segment_id == oplog->opid / oplog->oplog_segment_size);
 

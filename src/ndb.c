@@ -130,7 +130,7 @@ ndb_load_conf(instance_t *instance)
     instance->oplog.oplog_segment_cnt    = nc_conf_get_num(&instance->conf, "oplog.segment_cnt", 100);
 
     instance->repl.master                = NULL;
-    instance->repl.repl_pos              = 0;
+    instance->repl.repl_opid             = 0;
     instance->repl.connect_timeout       = nc_conf_get_num(&instance->conf, "repl.connect_timeout", 1000);
     instance->repl.connect_retry         = nc_conf_get_num(&instance->conf, "repl.connect_retry", 2);
     instance->repl.sleep_time            = nc_conf_get_num(&instance->conf, "repl.sleep_time", 200); /* 200 ms */

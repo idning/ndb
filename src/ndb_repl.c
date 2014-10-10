@@ -164,8 +164,8 @@ repl_get_master_op_pos(repl_t *repl, redisContext *c)
         return NC_ERROR;
     }
 
-    repl->repl_pos = atoll(opid_str);
-    log_info("set repl_pos to %"PRIu64"", repl->repl_pos);
+    repl->repl_opid = atoll(opid_str);
+    log_info("set repl_opid to %"PRIu64"", repl->repl_opid);
 
     sdsfree(opid_str);
     freeReplyObject(reply);
@@ -277,9 +277,9 @@ repl_sync_op(repl_t *repl, redisContext *c)
     uint32_t i, j;
     sds argv[4];
 
-    log_notice("repl_sync_op, call GETOP %"PRIu64" count 100", repl->repl_pos + 1);
+    log_notice("repl_sync_op, call GETOP %"PRIu64" count 100", repl->repl_opid + 1);
 
-    reply = redisCommand(c, "GETOP %"PRIu64" count 100", repl->repl_pos + 1);
+    reply = redisCommand(c, "GETOP %"PRIu64" count 100", repl->repl_opid + 1);
     if (reply == NULL) {
         log_warn("GETOP return NULL");
         return NC_ERROR;
@@ -291,7 +291,7 @@ repl_sync_op(repl_t *repl, redisContext *c)
     }
 
     if (reply->elements == 0) {
-        log_warn("no new op @ %"PRIu64"", repl->repl_pos);
+        log_warn("no new op @ %"PRIu64"", repl->repl_opid);
         freeReplyObject(reply);
         return NC_OK;
     }
@@ -316,9 +316,9 @@ repl_sync_op(repl_t *repl, redisContext *c)
         }
     }
 
-    repl->repl_pos += reply->elements;
+    repl->repl_opid += reply->elements;
 
-    log_notice("repl_sync_op, %u cmd synced, new repl_pos: %"PRIu64"", reply->elements, repl->repl_pos);
+    log_notice("repl_sync_op, %u cmd synced, new repl_opid: %"PRIu64"", reply->elements, repl->repl_opid);
     freeReplyObject(reply);
     return NC_OK;
 }
@@ -328,7 +328,7 @@ repl_run(repl_t *repl)
 {
     redisContext *c; //TODO: put it into repl_t
     rstatus_t status;
-    uint64_t last_repl_pos;
+    uint64_t last_repl_opid;
 
     c = repl_connect(repl);
     if (c == NULL) {
@@ -348,14 +348,14 @@ repl_run(repl_t *repl)
     }
 
     while (true) {
-        last_repl_pos = repl->repl_pos;
+        last_repl_opid = repl->repl_opid;
 
         status = repl_sync_op(repl, c);
         if (status != NC_OK) {
             //TODO: reconnect
         }
 
-        if (repl->repl_pos == last_repl_pos) { /* if no new oplog, sleep */
+        if (repl->repl_opid == last_repl_opid) { /* if no new oplog, sleep */
             usleep(repl->sleep_time * 1000);
 
             status = repl_ping(repl, c);
