@@ -113,6 +113,39 @@ repl_ping(repl_t *repl, redisContext *c)
     return NC_OK;
 }
 
+static sds
+repl_parse_master_info(char *buf, char *field)
+{
+    sds *lines;
+    sds line;
+    int32_t nlines, i;
+    sds ret = NULL;
+
+    lines = sdssplitlen(buf, strlen(buf), "\r\n", 2, &nlines);
+    if (lines == NULL) {
+        log_warn("parse_master_op_pos got error");
+        return 0;
+    }
+
+    for (i = 0; i < nlines; i++) {
+        line = lines[i];
+        if (line[0] == '#') {
+            continue;
+        }
+
+        if (sdslen(line) < strlen(field)) {
+            continue;
+        }
+
+        if (0 == nc_strncmp(line, field, strlen(field))) {
+            ret = sdsnew(line + strlen(field) + 1);
+        }
+    }
+
+    sdsfreesplitres(lines, nlines);
+    return ret;
+}
+
 static rstatus_t
 repl_get_master_op_pos(repl_t *repl, redisContext *c)
 {

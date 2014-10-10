@@ -242,7 +242,8 @@ test_oplog_append_cmds()
 /*
  * test bsearch implement
  * */
-static void test_oplog_segment_insert_pos()
+static void
+test_oplog_segment_insert_pos()
 {
     oplog_segment_t seg;
     int i;

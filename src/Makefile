@@ -63,12 +63,19 @@ $(TEST_EVENT_BIN): $(TEST_EVENT_OBJ)
 #test-oplog
 TEST_OPLOG_BIN=test_oplog
 TEST_OPLOG_OBJ=$(UTIL_OBJ) test/test_oplog.o 
-test/test_oplog.o: ndb_oplog.c test/test_conf.c
-$(TEST_OPLOG_BIN): $(TEST_OPLOG_OBJ) ndb_oplog.c
-	$(LD) $(LDFLAGS) -o $@ $(TEST_OPLOG_OBJ) $(LDLIBS)
+$(TEST_OPLOG_BIN): $(TEST_OPLOG_OBJ) 
+	$(LD) $(LDFLAGS) -o $@ $^ $(LDLIBS)
+test/test_oplog.o: ndb_oplog.c test/test_oplog.c
+
+#test-repl
+TEST_REPL_BIN=test_repl
+TEST_REPL_OBJ=$(UTIL_OBJ) test/test_repl.o ndb_leveldb.o ndb_oplog.o
+$(TEST_REPL_BIN): $(TEST_REPL_OBJ) 
+	$(LD) $(LDFLAGS) -o $@ $^ $(LDLIBS)
+test/test_repl.o: ndb_repl.c test/test_repl.c
 
 #summary
-ALL_BIN=$(KV_BIN) $(TEST_CONF_BIN) $(TEST_ARRAY_BIN) $(TEST_EVENT_BIN) $(TEST_OPLOG_BIN)
+ALL_BIN=$(KV_BIN) $(TEST_CONF_BIN) $(TEST_ARRAY_BIN) $(TEST_EVENT_BIN) $(TEST_OPLOG_BIN) $(TEST_REPL_BIN) 
 bin: $(ALL_BIN)
 
 test: bin

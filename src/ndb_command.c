@@ -645,6 +645,11 @@ ndb_conn_get_oplog(struct conn *conn)
     return &instance->store;
 }
 
+/*
+ * SLAVEOF host port
+ * SLAVEOF NO ONE
+ *
+ * */
 static rstatus_t
 command_process_slaveof(struct conn *conn, msg_t *msg)
 {
@@ -668,6 +673,11 @@ command_process_slaveof(struct conn *conn, msg_t *msg)
     }
 }
 
+/*
+ * FLUSHDB
+ * FLUSHALL
+ *
+ */
 static rstatus_t
 command_process_flushdb(struct conn *conn, msg_t *msg)
 {
@@ -681,8 +691,6 @@ command_process_flushdb(struct conn *conn, msg_t *msg)
     } else {
         return command_reply_err(conn, "-ERR error on flushdb\r\n");
     }
-
-    //TODO: oplog
 }
 
 static rstatus_t
