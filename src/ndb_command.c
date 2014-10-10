@@ -21,24 +21,24 @@ static rstatus_t command_process_getop(struct conn *conn, msg_t *msg);
 static rstatus_t command_process_slaveof(struct conn *conn, msg_t *msg);
 
 static command_t command_table[] = {
-    { "get",        2,  command_process_get     },
-    { "set",        3,  command_process_set     },
-    { "del",        2,  command_process_del     },
-    { "expire",     3,  command_process_expire  },
-    { "ttl",        2,  command_process_ttl     },
+    { "get",        2,  "r", command_process_get     },
+    { "set",        3,  "w", command_process_set     },
+    { "del",        2,  "w", command_process_del     },
+    { "expire",     3,  "w", command_process_expire  },
+    { "ttl",        2,  "r", command_process_ttl     },
 
-    { "getop",      -2, command_process_getop   },
-    { "scan",       -2, command_process_scan    },
-    { "vscan",      -2, command_process_scan    },  /* scan with value and expire */
+    { "getop",      -2, "r", command_process_getop   },
+    { "scan",       -2, "r", command_process_scan    },
+    { "vscan",      -2, "r", command_process_scan    },  /* scan with value and expire */
 
-    { "ping",       1,  command_process_ping    },
-    { "flushdb",    1,  command_process_flushdb },
-    { "flushall",   1,  command_process_flushdb },
-    { "info",       1,  command_process_info    },
+    { "ping",       1,  "r", command_process_ping    },
+    { "flushdb",    1,  "w", command_process_flushdb },
+    { "flushall",   1,  "w", command_process_flushdb },
+    { "info",       1,  "r", command_process_info    },
 
-    { "compact",    1,  command_process_compact },
-    { "eliminate",  1,  command_process_eliminate},
-    { "slaveof",    3,  command_process_slaveof},
+    { "compact",    1,  "a", command_process_compact },
+    { "eliminate",  1,  "a", command_process_eliminate},
+    { "slaveof",    3,  "a", command_process_slaveof},
 };
 
 rstatus_t
@@ -66,6 +66,12 @@ command_lookup(char *name)
     }
 
     return NULL;
+}
+
+static bool
+command_has_flag(command_t *cmd, char flag)
+{
+    return strchr(cmd->sflags, flag);
 }
 
 static rstatus_t
@@ -193,19 +199,46 @@ command_reply_num(struct conn *conn, int64_t n)
     return _command_reply_int(conn, ':', n);
 }
 
+static repl_t *
+ndb_conn_get_repl(struct conn *conn)
+{
+    server_t *srv = conn->owner;
+    instance_t *instance = srv->owner;
+    return &instance->repl;
+}
+
+static store_t *
+ndb_conn_get_store(struct conn *conn)
+{
+    server_t *srv = conn->owner;
+    instance_t *instance = srv->owner;
+    return &instance->store;
+}
+
+static store_t *
+ndb_conn_get_oplog(struct conn *conn)
+{
+    server_t *srv = conn->owner;
+    instance_t *instance = srv->owner;
+    return &instance->store;
+}
+
+
 rstatus_t
 command_process(struct conn *conn, msg_t *msg)
 {
     sds name;
     rstatus_t status;
+    repl_t *repl = ndb_conn_get_repl(conn);
+    command_t *cmd;
 
     ASSERT(msg != NULL);
     ASSERT(msg->argc > 0);
 
     name = msg->argv[0];
     sdstolower(name);
-    command_t *cmd = command_lookup(name);
 
+    cmd = command_lookup(name);
     if (cmd == NULL) {
         return command_reply_err(conn, "-ERR can not find command\r\n");
     }
@@ -218,6 +251,10 @@ command_process(struct conn *conn, msg_t *msg)
         if (msg->argc < - cmd->argc) {
             return command_reply_err(conn, "-ERR wrong number of arguments\r\n");
         }
+    }
+
+    if (command_has_flag(cmd, 'w') && (repl_role(repl) == REPL_ROLE_SLAVE)) {
+        return command_reply_err(conn, "-READONLY You can't write against a read only slave.\r\n");
     }
 
     log_info("ndb_process_msg: %"PRIu64" argc=%d, cmd=%s", msg->id,
@@ -619,30 +656,6 @@ command_process_eliminate(struct conn *conn, msg_t *msg)
     } else {
         return command_reply_err(conn, "-ERR eliminate already running\r\n");
     }
-}
-
-static repl_t *
-ndb_conn_get_repl(struct conn *conn)
-{
-    server_t *srv = conn->owner;
-    instance_t *instance = srv->owner;
-    return &instance->repl;
-}
-
-static store_t *
-ndb_conn_get_store(struct conn *conn)
-{
-    server_t *srv = conn->owner;
-    instance_t *instance = srv->owner;
-    return &instance->store;
-}
-
-static store_t *
-ndb_conn_get_oplog(struct conn *conn)
-{
-    server_t *srv = conn->owner;
-    instance_t *instance = srv->owner;
-    return &instance->store;
 }
 
 /*

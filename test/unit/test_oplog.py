@@ -9,15 +9,13 @@ import StringIO
 
 ndb2 = NDB('127.0.0.5', 5529, '/tmp/r/ndb-5529/', {'loglevel': T_VERBOSE})
 
-def setup():
-    print 'xxxxx setup'
-    common.setup()
+def _setup():
+    print 'xxxxx _setup'
     ndb2.deploy()
     ndb2.start()
 
-def teardown():
-    print 'xxxxx teardown'
-    common.teardown()
+def _teardown():
+    print 'xxxxx _teardown'
     assert(ndb2._alive())
     ndb2.stop()
 
@@ -84,6 +82,7 @@ def _get_all_keys(conn):
             break
     return all_keys
 
+@with_setup(_setup, _teardown)
 def test_repl():
     conn = get_conn()
     conn2 = get_conn(ndb2)
@@ -115,6 +114,29 @@ def test_repl():
 
     print 'done'
 
+@with_setup(_setup, _teardown)
+def test_repl_slave_readonly():
+    conn = get_conn()
+    conn2 = get_conn(ndb2)
+
+    kv = {'kkk-%s' % i : 'vvv-%s' % i for i in range(12)}
+    for k, v in kv.items():
+        conn.set(k, v)
+        conn.expire(k, 100)
+
+    conn2.slaveof('%s:%s' % (ndb.host(), ndb.port()))
+    time.sleep(2)
+
+    for k, v in kv.items():
+        assert(conn2.get(k) == v)
+        assert(conn2.ttl(k) > 0)
+
+    assert_fail("READONLY", conn2.set, 'k', 'v')
+    assert_fail("READONLY", conn2.expire, 'k', '10')
+    assert_fail("READONLY", conn2.delete, 'key')
+    assert_fail("READONLY", conn2.flushdb)
+
+@with_setup(_setup, _teardown)
 def test_repl_master_restart():
     conn = get_conn()
     conn2 = get_conn(ndb2)
@@ -150,5 +172,4 @@ def test_repl_master_restart():
     assert(_get_all_keys(conn) == _get_all_keys(conn2))
 
     print 'done'
-
 

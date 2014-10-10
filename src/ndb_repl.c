@@ -424,3 +424,13 @@ repl_set_master(repl_t *repl, char *master)
 
     return NC_OK;
 }
+
+repl_role_t
+repl_role(repl_t *repl)
+{
+    if (repl->master == NULL) {
+        return REPL_ROLE_MASTER;
+    }
+    return REPL_ROLE_SLAVE;
+}
+

@@ -26,6 +26,11 @@ typedef struct repl_s {
     char            *info_path;         /* file to save repl info */
 } repl_t;
 
+typedef enum repl_role_s {
+    REPL_ROLE_MASTER,
+    REPL_ROLE_SLAVE,
+} repl_role_t;
+
 rstatus_t repl_init(void *owner, repl_t *repl);
 rstatus_t repl_deinit(repl_t *repl);
 
@@ -34,6 +39,7 @@ rstatus_t repl_stop(repl_t *repl);
 rstatus_t repl_set_master(repl_t *repl, char *master);
 rstatus_t repl_info_flush(repl_t *repl);
 rstatus_t repl_run(repl_t *repl);
+repl_role_t repl_role(repl_t *repl);
 
 #endif
 /* vim: set expandtab ts=4 sw=4 sts=4 tw=100: */

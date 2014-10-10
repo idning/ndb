@@ -3,6 +3,7 @@
 import os
 import sys
 import redis
+from nose import with_setup
 
 PWD = os.path.dirname(os.path.realpath(__file__))
 WORKDIR = os.path.join(PWD,'../')

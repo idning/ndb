@@ -14,6 +14,7 @@ typedef rstatus_t (*cmd_process_t)(struct conn*, msg_t *msg);
 typedef struct command_s {
     char           *name;
     int             argc;
+    char           *sflags;         /* flags as string representation, one char per flag. */
     cmd_process_t   proc;
 } command_t;
 
