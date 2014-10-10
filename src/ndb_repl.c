@@ -149,7 +149,26 @@ repl_parse_master_info(char *buf, char *field)
 static rstatus_t
 repl_get_master_op_pos(repl_t *repl, redisContext *c)
 {
+    redisReply *reply;
+    sds opid_str;
 
+    reply = redisCommand(c, "INFO");
+    if (reply == NULL) {
+        log_warn("repl INFO return NULL");
+        return NC_ERROR;
+    }
+
+    opid_str = repl_parse_master_info(reply->str, "oplog.last");
+    if (opid_str == NULL) {
+        log_warn("repl INFO do not have oplog.last");
+        return NC_ERROR;
+    }
+
+    repl->repl_pos = atoll(opid_str);
+    log_info("set repl_pos to %"PRIu64"", repl->repl_pos);
+
+    sdsfree(opid_str);
+    freeReplyObject(reply);
     return NC_OK;
 }
 
@@ -163,18 +182,18 @@ repl_apply_op(repl_t *repl, uint32_t argc, sds *argv)
     if (0 == strcasecmp(argv[0], "SET")) {
         ASSERT(argc == 4);
 
-        log_debug("repl_apoly_op: %u %s %s", argc, argv[0], argv[1]);
+        log_debug("repl_apoly_op: argc = %u %s %s", argc, argv[0], argv[1]);
         expire = atoll(argv[3]);
         return store_set(store, argv[1], argv[2], expire);  //TODO: is store_set(leveldb) thread safe?
     } else if (0 == strcasecmp(argv[0], "DEL")) {
         ASSERT(argc == 2);
 
-        log_debug("repl_apoly_op: %u %s %s", argc, argv[0], argv[1]);
+        log_debug("repl_apoly_op: argc = %u %s %s", argc, argv[0], argv[1]);
         return store_del(store, argv[1]);
     } else if (0 == strcasecmp(argv[0], "DROP")) {
         ASSERT(argc == 1);
 
-        log_debug("repl_apoly_op: %u %s", argc, argv[0]);
+        log_debug("repl_apoly_op: argc = %u %s", argc, argv[0]);
         return store_drop(store);
     } else {
         ASSERT(0);
@@ -191,12 +210,17 @@ repl_full_sync(repl_t *repl, redisContext *c)
 {
     redisReply *reply;
     redisReply *subreply;
+    rstatus_t status;
     sds cursor = sdsnew("0");
     uint32_t i, j, keys;
     uint32_t cnt = 0;
     sds argv[4];        /* set k v e */
 
-    repl->repl_pos = 0; /* TODO: set repl_pos */
+    status = repl_get_master_op_pos(repl, c);
+    if (status != NC_OK) {
+        log_warn("can not get master op_pos");
+        return NC_ERROR;
+    }
 
     while (1) {
         reply = redisCommand(c, "VSCAN %s", cursor);

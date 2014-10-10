@@ -23,12 +23,16 @@ test_repl_parse_master_info()
                      "oplog.last:5\r\n"  );
 
     sds value = repl_parse_master_info(buf, "oplog.last");
-
     TEST_ASSERT("parse master info",
               strcmp(value, "5") == 0);
+    sdsfree(value);
+
+    value = repl_parse_master_info(buf, "oplog.last2");
+    TEST_ASSERT("parse master info",
+              value == NULL);
+    sdsfree(value);
 
     sdsfree(buf);
-    sdsfree(value);
 }
 
 int

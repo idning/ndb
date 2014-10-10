@@ -142,6 +142,10 @@ oplog_segment_close(oplog_segment_t *seg)
 /**
  * do a bsearch to find first pos which is not zero
  * lower_bound()
+ *
+ * we will use [low, high) but not [low, high]
+ * because if use [low, high], high = high - 1 will overflow
+ *
  */
 static uint64_t
 oplog_segment_insert_pos(oplog_segment_t *seg)
@@ -155,7 +159,7 @@ oplog_segment_insert_pos(oplog_segment_t *seg)
     high = seg->nmsg;
     while (low < high) {
         mid = (low + high) / 2;
-        if (index[mid].offset == 0) {
+        if (index[mid].offset == 0 && index[mid].length == 0) {
             high = mid;
         } else {
             low = mid + 1;
@@ -409,6 +413,11 @@ oplog_deinit(oplog_t *oplog)
     return NC_OK;
 }
 
+/*
+ * todo:
+ * this need thread safe.
+ *
+ * */
 rstatus_t
 oplog_append(oplog_t *oplog, sds msg)
 {
@@ -434,14 +443,6 @@ oplog_append(oplog_t *oplog, sds msg)
     if (offset < 0) {
         log_error("lseek(%d) failed: %s", seg->log_fd, strerror(errno));
         return NC_ERROR;
-    } else if (offset == 0) {
-        /*if log_file is a new file, write LOG_FILE_HEAD */
-        n = write(seg->log_fd, LOG_FILE_HEAD, strlen(LOG_FILE_HEAD));
-        if (n < 0) {
-            log_error("write(%d) failed: %s", seg->log_fd, strerror(errno));
-            return NC_ERROR;
-        }
-        offset += n;
     }
 
     /* write log file */

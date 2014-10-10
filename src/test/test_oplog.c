@@ -120,7 +120,7 @@ test_oplog_normal()
     for (i = 0; i < OPLOG_TEST_NRECORD; i++) {
         oplog_append(oplog, msg);
         TEST_ASSERT("oplog_normal opid",
-                   oplog->opid == i+1);
+                   oplog->opid == i + 1);
         TEST_ASSERT("oplog_normal nsegment",
                    array_n(oplog->segments) - 1 == (i + 1) / oplog->oplog_segment_size);
     }
@@ -142,7 +142,7 @@ test_oplog_close_and_reopen()
     oplog_t *oplog;
     sds msg, getmsg;
     int i;
-    sds dbgmsg ;
+    sds assertmsg;
 
     oplog = _test_oplog_open(true);
     ASSERT(oplog != NULL);
@@ -154,25 +154,28 @@ test_oplog_close_and_reopen()
         TEST_ASSERT("oplog_normal opid",
                    oplog->opid == i+1);
 
-        dbgmsg = sdscatprintf(sdsempty(), "test_oplog_close_and_reopen nsegment(%d) segments: %d",
+        assertmsg = sdscatprintf(sdsempty(), "test_oplog_close_and_reopen nsegment(%d) segments: %d",
                 i, array_n(oplog->segments));
-        TEST_ASSERT(dbgmsg,
+        TEST_ASSERT(assertmsg,
                    array_n(oplog->segments) - 1 == (i + 1) / oplog->oplog_segment_size);
-        sdsfree(dbgmsg);
+        sdsfree(assertmsg);
 
+        /* close and reopen */
         _test_oplog_close(oplog);
         oplog = _test_oplog_open(false);
+        TEST_ASSERT("oplog_normal opid",
+                   oplog->opid == i+1);
     }
 
     _test_oplog_close(oplog);
     oplog = _test_oplog_open(false);
     for (i = 1; i <= OPLOG_TEST_NRECORD; i++) {
         getmsg = oplog_get(oplog, i);
-        dbgmsg = sdscatprintf(sdsempty(), "oplog_get(%d) msg: %s", i, getmsg);
+        assertmsg = sdscatprintf(sdsempty(), "oplog_get(%d) msg: %s", i, getmsg);
 
-        TEST_ASSERT(dbgmsg,
+        TEST_ASSERT(assertmsg,
                    0 == sdscmp(msg, getmsg));
-        sdsfree(dbgmsg);
+        sdsfree(assertmsg);
         sdsfree(getmsg);
     }
 }
@@ -188,7 +191,6 @@ static void
 test_oplog_idx_corruption()
 {
     // TODO
-
 
 }
 
@@ -225,8 +227,7 @@ test_oplog_append_cmds()
     status = oplog_append_del(oplog, k);
     ASSERT(status == NC_OK);
 
-    oplog1 = LOG_FILE_HEAD \
-             "*4\r\n$3\r\nSET\r\n$5\r\nkkkkk\r\n$5\r\naaaaa\r\n$1\r\n0\r\n" \
+    oplog1 = "*4\r\n$3\r\nSET\r\n$5\r\nkkkkk\r\n$5\r\naaaaa\r\n$1\r\n0\r\n" \
              "*2\r\n$3\r\nDEL\r\n$5\r\nkkkkk\r\n";
 
     seg0 = array_get(oplog->segments, 0);
@@ -243,26 +244,26 @@ test_oplog_append_cmds()
  * test bsearch implement
  * */
 static void
-test_oplog_segment_insert_pos()
+test_oplog_segment_insert_pos(int segment_size)
 {
     oplog_segment_t seg;
     int i;
 
-    seg.nmsg = 10;
+    seg.nmsg = segment_size;
     seg.index = nc_zalloc(oplog_segment_index_size(&seg));
 
     TEST_ASSERT("insert_pos_start",
               0 == oplog_segment_insert_pos(&seg));
 
-    for (i = 0; i < 10; i++) {
+    for (i = 0; i < segment_size; i++) {
         seg.index[i].offset = 1;
         seg.index[i].length = 1;
         TEST_ASSERT("insert_pos",
-                  i+1 == oplog_segment_insert_pos(&seg));
+                  i + 1 == oplog_segment_insert_pos(&seg));
     }
 
     TEST_ASSERT("insert_pos_end",
-              10 == oplog_segment_insert_pos(&seg));
+              segment_size == oplog_segment_insert_pos(&seg));
 
     nc_free(seg.index);
 }
@@ -270,9 +271,13 @@ test_oplog_segment_insert_pos()
 int
 main(int argc, const char **argv)
 {
+    int i;
+
     log_init(LOG_DEBUG, NULL);
 
-    test_oplog_segment_insert_pos();
+    for (i = 1; i < 10; i++) {
+        test_oplog_segment_insert_pos(i);
+    }
 
     test_oplog_parent_dir_not_exists();
     test_oplog_dir_not_exists();
