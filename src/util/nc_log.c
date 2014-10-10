@@ -155,7 +155,8 @@ _log(int level, const char *file, int line, int panic, const char *fmt, ...)
     buf[len++] = '[';
     len += (int)strftime(buf + len, (size_t)(size - len), "%Y-%m-%d %H:%M:%S.", localtime(&tv.tv_sec));
     len += nc_scnprintf(buf + len, size - len, "%03d", (int)tv.tv_usec/1000);
-    len += nc_scnprintf(buf + len, size - len, "] %s %s:%d ", log_level_s(level), file, line);
+    len += nc_scnprintf(buf + len, size - len, "] %6s [%"PRIu64"] ", log_level_s(level), gettid());
+    len += nc_scnprintf(buf + len, size - len, "%s:%d ", file, line);
 
     va_start(args, fmt);
     len += nc_vscnprintf(buf + len, size - len, fmt, args);

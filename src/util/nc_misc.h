@@ -195,5 +195,6 @@ char *nc_unresolve_addr(struct sockaddr *addr, socklen_t addrlen);
 char *nc_unresolve_peer_desc(int sd);
 char *nc_unresolve_desc(int sd);
 rstatus_t nc_daemonize(int dump_core);
+uint64_t gettid();
 
 #endif

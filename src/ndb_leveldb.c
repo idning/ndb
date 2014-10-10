@@ -119,6 +119,8 @@ store_drop(store_t *s)
     rstatus_t status;
     oplog_t *oplog = &((instance_t *)s->owner)->oplog;
 
+    log_notice("store_drop %s begin", s->dbpath);
+
     /* close */
     leveldb_close(s->db);
     s->db = NULL;
@@ -144,6 +146,7 @@ store_drop(store_t *s)
         return status;
     }
 
+    log_notice("store_drop %s done", s->dbpath);
     return NC_OK;
 }
 

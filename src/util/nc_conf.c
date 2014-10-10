@@ -19,14 +19,14 @@ nc_conf_init(nc_conf_t *conf, const char *filename)
     luaL_openlibs(L);
 
     if (luaL_loadfile(L, filename)) {
-        log_stderr("luaL_loadfile on %s failed: %s",
+        log_error("luaL_loadfile on %s failed: %s",
                    filename, lua_tostring(L, -1));
         lua_pop(L, 1);
         goto fail;
     }
 
     if (lua_pcall(L, 0, 0, 0)) {
-        log_stderr("lua_pcall on %s failed: %s",
+        log_error("lua_pcall on %s failed: %s",
                    filename, lua_tostring(L, -1));
         lua_pop(L, 1);
         goto fail;

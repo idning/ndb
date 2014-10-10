@@ -76,6 +76,7 @@ struct stats;
 #include <netdb.h>
 #include <getopt.h>
 
+#include <sys/types.h>
 #include <sys/un.h>
 #include <sys/uio.h>
 #include <sys/time.h>
@@ -84,6 +85,7 @@ struct stats;
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
+#include <sys/syscall.h>
 
 #include <netinet/in.h>
 #include <netinet/tcp.h>

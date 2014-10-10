@@ -69,7 +69,7 @@ repl_connect(repl_t *repl)
     while (retry--) {
         repl->conn = redisConnectWithTimeout(host, port, timeout);
         if (repl->conn->err) {
-            log_warn("Connection to %s got error: %s\n", repl->conn->errstr);
+            log_warn("connection to %s got error: %s\n", repl->master, repl->conn->errstr);
             redisFree(repl->conn);
             repl->conn = NULL;
             return NC_ERROR;
@@ -83,7 +83,8 @@ repl_connect(repl_t *repl)
 static void
 repl_disconnect(repl_t *repl)
 {
-    //TODO
+    redisFree(repl->conn);
+    repl->conn = NULL;
 }
 
 /* PING master */
@@ -140,11 +141,15 @@ repl_parse_master_info(char *buf, char *field)
     return ret;
 }
 
+/*
+ *
+ * range is a uint64_t array with 2 elements
+ */
 static rstatus_t
-repl_get_master_op_pos(repl_t *repl)
+repl_get_master_op_range(repl_t *repl, uint64_t *range)
 {
     redisReply *reply;
-    sds opid_str;
+    sds s;
 
     reply = redisCommand(repl->conn, "INFO");
     if (reply == NULL) {
@@ -152,16 +157,24 @@ repl_get_master_op_pos(repl_t *repl)
         return NC_ERROR;
     }
 
-    opid_str = repl_parse_master_info(reply->str, "oplog.last");
-    if (opid_str == NULL) {
+    s = repl_parse_master_info(reply->str, "oplog.first");
+    if (s == NULL) {
+        log_warn("repl INFO do not have oplog.first");
+        return NC_ERROR;
+    }
+    range[0] = atoll(s);
+    sdsfree(s);
+
+    s = repl_parse_master_info(reply->str, "oplog.last");
+    if (s == NULL) {
         log_warn("repl INFO do not have oplog.last");
         return NC_ERROR;
     }
+    range[1] = atoll(s);
+    sdsfree(s);
 
-    repl->repl_opid = atoll(opid_str);
-    log_info("set repl_opid to %"PRIu64"", repl->repl_opid);
+    log_info("repl_op_range [%"PRIu64", %"PRIu64"]", range[0], range[1]);
 
-    sdsfree(opid_str);
     freeReplyObject(reply);
     return NC_OK;
 }
@@ -200,7 +213,7 @@ repl_apply_op(repl_t *repl, uint32_t argc, sds *argv)
  * and apply to the store
  * */
 static rstatus_t
-repl_full_sync(repl_t *repl)
+repl_sync_full(repl_t *repl)
 {
     redisReply *reply;
     redisReply *subreply;
@@ -209,10 +222,14 @@ repl_full_sync(repl_t *repl)
     uint32_t i, j, keys;
     uint32_t cnt = 0;
     sds argv[4];        /* set k v e */
+    uint64_t range[2];
 
-    status = repl_get_master_op_pos(repl);
+    /* save current last op in master
+     * after the sync is done, we will sync oplog from range[1]
+     * */
+    status = repl_get_master_op_range(repl, range);
     if (status != NC_OK) {
-        log_warn("can not get master op_pos");
+        log_warn("can not get master op range");
         return NC_ERROR;
     }
 
@@ -259,7 +276,10 @@ repl_full_sync(repl_t *repl)
         }
     }
 
-    log_notice("repl full sync done, %u keys synced", cnt);
+    repl->repl_opid = range[1];
+    log_notice("repl full sync done, %u keys synced, set repl_opid to %"PRIu64"",
+            cnt, repl->repl_opid);
+
     return NC_OK;
 }
 
@@ -285,7 +305,7 @@ repl_sync_op(repl_t *repl)
     }
 
     if (reply->elements == 0) {
-        log_warn("no new op @ %"PRIu64"", repl->repl_opid);
+        log_info("no new op @ %"PRIu64"", repl->repl_opid);
         freeReplyObject(reply);
         return NC_OK;
     }
@@ -318,35 +338,33 @@ repl_sync_op(repl_t *repl)
 }
 
 rstatus_t
-repl_run(repl_t *repl)
+repl_sync(repl_t *repl)
 {
+    uint64_t range[2];
     rstatus_t status;
     uint64_t last_repl_opid;
 
-    status = repl_connect(repl);
+    status = repl_get_master_op_range(repl, range);
     if (status != NC_OK) {
-        log_error("can not connect to master, error: %s\n", strerror(errno));
-        return NC_ERROR;
+        return status;
     }
 
-    log_info("repl connect to %s", repl->master);
-
-    status = repl_ping(repl);
-    if (status != NC_OK) {
-        //TODO: reconnect
+    if (!(repl->repl_opid >= range[0] && repl->repl_opid <= range[1])) {
+        /* init sync or outof sync, need a full resync  */
+        status = repl_sync_full(repl);
+        if (status != NC_OK) {
+            return status;
+        }
     }
 
-    status = repl_full_sync(repl);
-    if (status != NC_OK) {
-        //TODO: reconnect
-    }
-
+    /* we can continue sync oplog. */
+    ASSERT(repl->repl_opid >= range[0] && repl->repl_opid <= range[1]);
     while (true) {
         last_repl_opid = repl->repl_opid;
 
         status = repl_sync_op(repl);
         if (status != NC_OK) {
-            //TODO: reconnect
+            return status;
         }
 
         if (repl->repl_opid == last_repl_opid) { /* if no new oplog, sleep */
@@ -354,9 +372,35 @@ repl_run(repl_t *repl)
 
             status = repl_ping(repl);
             if (status != NC_OK) {
-                //TODO: reconnect
+                return status;
             }
         }
+    }
+
+    return NC_OK;
+}
+
+rstatus_t
+repl_run(repl_t *repl)
+{
+    rstatus_t status;
+
+    while (true) {
+        status = repl_connect(repl);
+        if (status != NC_OK) {
+            log_error("can not connect to master (%s), error: %s\n", repl->master, strerror(errno));
+            return NC_ERROR;
+        }
+
+        log_info("repl connect to %s", repl->master);
+
+        status = repl_sync(repl);
+        if (status != NC_OK) {
+            log_warn("repl disconnected with %s ", repl->master);
+            repl_disconnect(repl);
+        }
+
+        usleep(repl->sleep_time * 1000);
     }
 
     return NC_OK;

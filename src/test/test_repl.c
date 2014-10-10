@@ -16,8 +16,6 @@
 static void
 test_repl_parse_master_info()
 {
-    rstatus_t status;
-
     sds buf = sdsnew("#repl\r\n"            \
                      "oplog.first:3\r\n"    \
                      "oplog.last:5\r\n"  );

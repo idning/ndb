@@ -240,6 +240,9 @@ main(int argc, const char **argv)
     instance_t instance;
     rstatus_t status;
 
+    /* log to stderr */
+    log_init(LOG_ERROR, NULL);
+
     status = ndb_get_options(argc, argv, &instance);
     if (status != NC_OK) {
         ndb_show_usage();
@@ -248,7 +251,7 @@ main(int argc, const char **argv)
 
     status = ndb_load_conf(&instance);
     if (status != NC_OK) {
-        log_stderr("ndb: configuration file '%s' syntax is invalid",
+        log_stderr("ndb: configuration file '%s' is invalid",
                    instance.configfile);
         exit(1);
     }

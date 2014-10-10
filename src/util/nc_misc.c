@@ -594,3 +594,13 @@ nc_daemonize(int dump_core)
 
     return NC_OK;
 }
+
+uint64_t gettid() {
+#if defined(__linux__)
+	return (uint64_t) syscall(SYS_gettid);
+#elif defined(__APPLE__) && defined(__MACH__)
+	return syscall(SYS_thread_selfid);
+#else
+#error Don't know how to get tid on this platform
+#endif
+}
