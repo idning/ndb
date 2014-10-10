@@ -160,6 +160,18 @@ store_decode_val(const char *str, size_t len, sds *val, uint64_t *expire)
     return NC_OK;
 }
 
+static sds
+store_encode_val(sds val, uint64_t expire)
+{
+    sds newval;
+
+    newval = sdscpylen(sdsempty(), STORE_NS_KV, 1); //prefix
+    newval = sdscatlen(newval, (char *)&expire, sizeof(expire));
+    newval = sdscatlen(newval, val, sdslen(val));
+
+    return newval;
+}
+
 rstatus_t
 store_get(store_t *s, sds key, sds *val, int64_t *expire)
 {
@@ -205,9 +217,7 @@ store_set(store_t *s, sds key, sds val, int64_t expire)
     rstatus_t status;
     oplog_t *oplog = &((instance_t *)s->owner)->oplog;
 
-    newval = sdscpylen(sdsempty(), STORE_NS_KV, 1); //prefix
-    newval = sdscatlen(newval, (char *)&expire, sizeof(expire));
-    newval = sdscatlen(newval, val, sdslen(val));
+    newval = store_encode_val(val, expire);
 
     leveldb_put(s->db, s->woptions, key, sdslen(key), newval, sdslen(newval), &err);
 

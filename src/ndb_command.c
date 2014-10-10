@@ -719,6 +719,13 @@ command_process_info(struct conn *conn, msg_t *msg)
     return status;
 }
 
+/*
+ * nc_connection.c will call recv_done when conn->recv_ready not set
+ * example:
+ *  - recv retuan EAGAIN
+ *
+ * we may got a message or a part of message
+ * */
 rstatus_t
 ndb_conn_recv_done(struct conn *conn)
 {
@@ -761,13 +768,31 @@ ndb_conn_recv_done(struct conn *conn)
     return NC_OK;
 }
 
+/*
+ * nc_connection.c will call send_done when conn->send_ready not set
+ * example:
+ *  - send retuan EAGAIN
+ *
+ * when we send a large msg (larger then the socket sendbuf),
+ * we will got EAGAIN and a part of this large message is sent.
+ *
+ * so if we still have content in conn->send_queue, we should do nothing here
+ * if we have no content in conn->send_queue, we can conn_del_out(conn)
+ *
+ * maybe we can do this in nc_connection.c
+ *
+ * */
 rstatus_t
 ndb_conn_send_done(struct conn *conn)
 {
-    log_debug("conn_send_done on conn: %p", conn);
-
     /* TODO: idle and timeout */
 
-    return conn_del_out(conn);
+    if (STAILQ_EMPTY(&conn->send_queue)) {
+        log_debug("conn_send_done on conn: %p", conn);
+        return conn_del_out(conn);
+    }
+
+    log_debug("conn_send_done but still has data not sent on conn: %p", conn);
+    return NC_OK;
 }
 
