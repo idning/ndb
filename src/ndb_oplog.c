@@ -169,6 +169,9 @@ oplog_segment_insert_pos(oplog_segment_t *seg)
     return low;
 }
 
+/*
+ * used for sort
+ */
 static int
 oplog_segment_compare_fun(const void *a, const void *b)
 {
@@ -192,11 +195,14 @@ oplog_segment_log_fun(void *elem, void *data)
 }
 
 /*
+ * when we restart, we need restore the opid from segments.
+ *
  * 1. find current segment to write to
  * 2. find current opid
+ *
  * */
 static rstatus_t
-oplog_find_current_segment(oplog_t *oplog)
+oplog_restore_opid(oplog_t *oplog)
 {
     rstatus_t status;
     oplog_segment_t *seg;
@@ -225,6 +231,7 @@ oplog_find_current_segment(oplog_t *oplog)
      * if this segment is full, pos == oplog->oplog_segment_size
      * we will create new segment on next write
      * */
+
     /* pos == 0 means that it's a empty segment, we will not see empty segment in our system */
     ASSERT(pos > 0);
 
@@ -379,8 +386,8 @@ oplog_init(void *owner, oplog_t *oplog)
         return status;
     }
 
-    /* 3. find oplog->opid */
-    status = oplog_find_current_segment(oplog);
+    /* 3. restore oplog->opid */
+    status = oplog_restore_opid(oplog);
     if (status != NC_OK) {
         return status;
     }
@@ -455,13 +462,25 @@ oplog_append(oplog_t *oplog, sds msg)
 
 /*
  * return oplog range,
- * [first, last] is all the oplog current saved in oplog
+ *
+ * [first, last] is all the oplog current saved in oplog, it may be:
+ * [0, 0] if not oplog wrote
+ * if the first segment is segment 0, we will return
+ * [0, xxx] if has oplog
+ * but notice, opid 0 is not exists.
+ *
  * include first and last
  * */
 rstatus_t
 oplog_range(oplog_t *oplog, uint64_t *first, uint64_t *last)
 {
     oplog_segment_t *seg0;
+
+    if (oplog->opid == 0) {
+        *first = 0;
+        *last = 0;
+        return;
+    }
 
     seg0 = array_get(oplog->segments, 0);
     *first = seg0->segment_id * oplog->oplog_segment_size;
@@ -483,7 +502,14 @@ oplog_get(oplog_t *oplog, uint64_t opid)
     sds ret;
     ssize_t n;
 
-    ASSERT(array_n(oplog->segments) > 0);
+    if (opid == 0) {
+        log_error("opid 0 is not exists");
+    }
+
+    if (array_n(oplog->segments) == 0) {
+        log_debug("opid: %"PRIu64" not exist, no segments", opid);
+        return NULL;
+    }
 
     /* get first segment */
     seg0 = array_get(oplog->segments, 0);

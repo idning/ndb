@@ -36,6 +36,10 @@ class Base:
         self._pre_deploy()
         self._gen_control_script()
 
+    def clean(self):
+        cmd = TT("rm -rf $path", self.args)
+        self._run(cmd)
+
     def host(self):
         return self.args['host']
 

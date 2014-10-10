@@ -15,7 +15,6 @@
 #define LOG_FILENAME_FORMAT "log.%010" PRIu64
 #define IDX_FILENAME_FORMAT "idx.%010" PRIu64
 
-#define LOG_FILE_HEAD "ndblog\r\n"
 
 /*
  * oplog is consist of many segments.

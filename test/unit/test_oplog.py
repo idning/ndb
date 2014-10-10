@@ -22,9 +22,17 @@ def teardown():
 def test_oplog():
     k = 'kkkkk'
     v = 'vvvvv'
-    conn = get_conn()
+    ndb.stop()
+    ndb.clean()
+    ndb.deploy()
+    ndb.start()
+
+    conn = get_conn(flush = False)
 
     info = conn.info()
+    assert(info['oplog.first'] == 0)
+    assert(info['oplog.last'] == 0)
+
     last_oplog = info['oplog.last']
 
     #set
@@ -32,6 +40,10 @@ def test_oplog():
     op = conn.getop(last_oplog + 1)
     print op
     assert(op[0] == ['SET', k, v, '0'])
+
+    info = conn.info()
+    assert(info['oplog.first'] == 0)
+    assert(info['oplog.last'] == 1)
 
     #expire
     rst = conn.expire(k, 10)

@@ -117,8 +117,9 @@ class ndb_conn(redis.Redis):
         # print op
         return op
 
-def get_conn(ndb = ndb):
+def get_conn(ndb = ndb, flush = True):
     conn = ndb_conn(ndb.host(), ndb.port())
-    conn.flushdb()
+    if flush:
+        conn.flushdb()
 
     return conn
