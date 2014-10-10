@@ -93,6 +93,7 @@ rstatus_t oplog_eliminate(oplog_t *oplog);
 /* wrapper api */
 rstatus_t oplog_append_set(oplog_t *oplog, sds key, sds val, uint64_t expire);
 rstatus_t oplog_append_del(oplog_t *oplog, sds key);
+rstatus_t oplog_append_drop(oplog_t *oplog);
 
 #endif
 /* vim: set expandtab ts=4 sw=4 sts=4 tw=100: */

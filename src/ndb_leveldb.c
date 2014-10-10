@@ -116,6 +116,8 @@ rstatus_t
 store_drop(store_t *s)
 {
     char *err = NULL;
+    rstatus_t status;
+    oplog_t *oplog = &((instance_t *)s->owner)->oplog;
 
     /* close */
     leveldb_close(s->db);
@@ -135,6 +137,11 @@ store_drop(store_t *s)
         log_error("leveldb_open return err: %s", err);
         leveldb_free(err);
         return NC_ERROR;
+    }
+
+    status = oplog_append_drop(oplog);
+    if (status != NC_OK) {
+        return status;
     }
 
     return NC_OK;

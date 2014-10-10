@@ -75,7 +75,6 @@ def test_repl():
     conn2 = get_conn(ndb2)
 
     conn.flushdb()
-    conn2.flushdb()
 
     kv = {'kkk-%s' % i : 'vvv-%s' % i for i in range(12)}
     for k, v in kv.items():
@@ -84,7 +83,7 @@ def test_repl():
 
     conn2.slaveof('%s:%s' % (ndb.host(), ndb.port()))
 
-    time.sleep(5)
+    time.sleep(2)
     assert(_get_all_keys(conn) == _get_all_keys(conn2))
 
     #new write

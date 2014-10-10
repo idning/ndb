@@ -603,6 +603,23 @@ oplog_append_del(oplog_t *oplog, sds key)
 }
 
 /*
+ * append a DROP command
+ */
+rstatus_t
+oplog_append_drop(oplog_t *oplog)
+{
+    rstatus_t status;
+    sds argv[1];
+    sds cmd = sdsnew("DROP");
+
+    argv[0] = cmd;
+
+    status = oplog_append_cmd(oplog, 1, argv);
+
+    sdsfree(cmd);
+    return status;
+}
+/*
  *
  * 1. find and expire old oplog files
  * 2. if a oplog is rm by admin, close it.

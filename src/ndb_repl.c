@@ -100,11 +100,11 @@ repl_ping(repl_t *repl, redisContext *c)
 
     reply = redisCommand(c, "PING");
     if (reply == NULL) {
-        log_warn("repl_ping PING return NULL");
+        log_warn("repl_ping return NULL");
         return NC_ERROR;
     }
     if (strcmp(reply->str, "PONG") != 0) {
-        log_error("can not ping to master, error: %s\n", strerror(errno));
+        log_warn("repl_ping return bad value");
         return NC_ERROR;
     }
     log_debug("repl_ping PING got %s", reply->str);
@@ -123,26 +123,30 @@ repl_get_master_op_pos(repl_t *repl, redisContext *c)
 static rstatus_t
 repl_apply_op(repl_t *repl, uint32_t argc, sds *argv)
 {
-    rstatus_t status;
     uint64_t expire;
     instance_t *instance = repl->owner;
     store_t *store = &instance->store;
 
-    log_debug("repl_apoly_op: %u %s %s", argc, argv[0], argv[1]);
     if (0 == strcasecmp(argv[0], "SET")) {
         ASSERT(argc == 4);
 
+        log_debug("repl_apoly_op: %u %s %s", argc, argv[0], argv[1]);
         expire = atoll(argv[3]);
-        status = store_set(store, argv[1], argv[2], expire);
+        return store_set(store, argv[1], argv[2], expire);  //TODO: is store_set(leveldb) thread safe?
     } else if (0 == strcasecmp(argv[0], "DEL")) {
         ASSERT(argc == 2);
 
-        status = store_del(store, argv[1]);
+        log_debug("repl_apoly_op: %u %s %s", argc, argv[0], argv[1]);
+        return store_del(store, argv[1]);
+    } else if (0 == strcasecmp(argv[0], "DROP")) {
+        ASSERT(argc == 1);
+
+        log_debug("repl_apoly_op: %u %s", argc, argv[0]);
+        return store_drop(store);
     } else {
         ASSERT(0);
+        return NC_ERROR;
     }
-
-    return status;
 }
 
 /*
@@ -216,8 +220,9 @@ repl_sync_op(repl_t *repl, redisContext *c)
     uint32_t i, j;
     sds argv[4];
 
-    log_notice("repl_sync_op, call GETOP %"PRIu64" count 10", repl->repl_pos + 1);
-    reply = redisCommand(c, "GETOP %"PRIu64" count 10", repl->repl_pos + 1);
+    log_notice("repl_sync_op, call GETOP %"PRIu64" count 100", repl->repl_pos + 1);
+
+    reply = redisCommand(c, "GETOP %"PRIu64" count 100", repl->repl_pos + 1);
     if (reply == NULL) {
         log_warn("GETOP return NULL");
         return NC_ERROR;
@@ -231,8 +236,9 @@ repl_sync_op(repl_t *repl, redisContext *c)
     if (reply->elements == 0) {
         log_warn("no new op @ %"PRIu64"", repl->repl_pos);
         freeReplyObject(reply);
-        return NC_ERROR;
+        return NC_OK;
     }
+
     log_notice("repl_sync_op, got %u ops", reply->elements);
 
     for (i = 0; i < reply->elements; i++) {
@@ -265,6 +271,7 @@ repl_run(repl_t *repl)
 {
     redisContext *c; //TODO: put it into repl_t
     rstatus_t status;
+    uint64_t last_repl_pos;
 
     c = repl_connect(repl);
     if (c == NULL) {
@@ -284,17 +291,21 @@ repl_run(repl_t *repl)
     }
 
     while (true) {
-        status = repl_ping(repl, c);
-        if (status != NC_OK) {
-            //TODO: reconnect
-        }
+        last_repl_pos = repl->repl_pos;
 
         status = repl_sync_op(repl, c);
         if (status != NC_OK) {
             //TODO: reconnect
         }
 
-        /* usleep(repl->sleep_time * 1000); */
+        if (repl->repl_pos == last_repl_pos) { /* if no new oplog, sleep */
+            usleep(repl->sleep_time * 1000);
+
+            status = repl_ping(repl, c);
+            if (status != NC_OK) {
+                //TODO: reconnect
+            }
+        }
     }
 
     redisFree(c);
