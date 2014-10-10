@@ -10,6 +10,8 @@
 #include "nc_util.h"
 
 typedef struct repl_s {
+    void        *owner;             /* instance */
+
     char        *master;            /* master info: host:port */
     uint64_t    repl_pos;           /* replcation pos (the next opid to fetch from master) */
     uint32_t    connect_timeout;    /* timeout in ms */

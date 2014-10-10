@@ -6,10 +6,14 @@
 
 #include "ndb_repl.h"
 #include "hiredis.h"
+#include "ndb.h"
 
 rstatus_t
 repl_init(void *owner, repl_t *repl)
 {
+
+    repl->owner = owner;
+
     /* do nothing, what we want to init should in repl_start */
     return NC_OK;
 }
@@ -116,9 +120,34 @@ repl_get_master_op_pos(repl_t *repl, redisContext *c)
     return NC_OK;
 }
 
+static rstatus_t
+repl_apply_op(repl_t *repl, uint32_t argc, sds *argv)
+{
+    rstatus_t status;
+    uint64_t expire;
+    instance_t *instance = repl->owner;
+    store_t *store = &instance->store;
+
+    log_debug("repl_apoly_op: %u %s %s", argc, argv[0], argv[1]);
+    if (0 == strcasecmp(argv[0], "SET")) {
+        ASSERT(argc == 4);
+
+        expire = atoll(argv[3]);
+        status = store_set(store, argv[1], argv[2], expire);
+    } else if (0 == strcasecmp(argv[0], "DEL")) {
+        ASSERT(argc == 2);
+
+        status = store_del(store, argv[1]);
+    } else {
+        ASSERT(0);
+    }
+
+    return status;
+}
+
 /*
- * scan all the object at master.
- *
+ * VSCAN all the object at master.
+ * and apply to the store
  * */
 static rstatus_t
 repl_full_sync(repl_t *repl, redisContext *c)
@@ -126,8 +155,9 @@ repl_full_sync(repl_t *repl, redisContext *c)
     redisReply *reply;
     redisReply *subreply;
     sds cursor = sdsnew("0");
-    uint32_t i, keys;
+    uint32_t i, j, keys;
     uint32_t cnt = 0;
+    sds argv[4];        /* set k v e */
 
     repl->repl_pos = 0; /* TODO: set repl_pos */
 
@@ -155,15 +185,17 @@ repl_full_sync(repl_t *repl, redisContext *c)
 
         keys = subreply->elements / 3;
         for (i = 0; i < keys; i++) {
-            sds key = sdsnewlen(subreply->element[i*3+0]->str, subreply->element[i*3+0]->len);
-            sds val = sdsnewlen(subreply->element[i*3+1]->str, subreply->element[i*3+1]->len);
-            uint64_t expire = atoll(subreply->element[i*3+2]->str);
+            argv[0] = sdsnew("set");
+            for (j = 0; j < 3; j++) {
+                argv[j+1] = sdsnewlen(subreply->element[i*3+j]->str, subreply->element[i*3+j]->len);
+            }
 
-            log_debug("repl got kve: %u %s %s %"PRIu64"", i, key, val, expire);
+            repl_apply_op(repl, 4, argv);
             cnt++;
 
-            sdsfree(key);
-            sdsfree(val);
+            for (j = 0; j < 4; j++) {
+                sdsfree(argv[j]);
+            }
         }
 
         freeReplyObject(reply);
@@ -177,20 +209,12 @@ repl_full_sync(repl_t *repl, redisContext *c)
 }
 
 static rstatus_t
-repl_apply_op(repl_t *repl, uint32_t argc, sds *argv)
-{
-    log_debug("repl got cmd: %u %s %s", argc, argv[0], argv[1]);
-
-    return NC_OK;
-}
-
-static rstatus_t
 repl_sync_op(repl_t *repl, redisContext *c)
 {
     redisReply *reply;
     redisReply *subreply;
     uint32_t i, j;
-    sds *argv;
+    sds argv[4];
 
     log_notice("repl_sync_op, call GETOP %"PRIu64" count 10", repl->repl_pos + 1);
     reply = redisCommand(c, "GETOP %"PRIu64" count 10", repl->repl_pos + 1);
@@ -219,7 +243,6 @@ repl_sync_op(repl_t *repl, redisContext *c)
             return NC_ERROR;
         }
 
-        argv = nc_zalloc(sizeof(* argv) * subreply->elements);;
         for (j = 0; j < subreply->elements; j++) {
             argv[j] = sdsnewlen(subreply->element[j]->str, subreply->element[j]->len);
         }
@@ -228,7 +251,6 @@ repl_sync_op(repl_t *repl, redisContext *c)
         for (j = 0; j < subreply->elements; j++) {
             sdsfree(argv[j]);
         }
-        nc_free(argv);
     }
 
     repl->repl_pos += reply->elements;
@@ -272,7 +294,7 @@ repl_run(repl_t *repl)
             //TODO: reconnect
         }
 
-        usleep(repl->sleep_time * 1000);
+        /* usleep(repl->sleep_time * 1000); */
     }
 
     redisFree(c);
@@ -282,7 +304,8 @@ repl_run(repl_t *repl)
 rstatus_t
 repl_info_flush(repl_t *repl)
 {
-
+    /* TODO */
+    return NC_OK;
 }
 
 rstatus_t

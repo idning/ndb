@@ -1,10 +1,23 @@
 #!/usr/bin/env python
 #coding: utf-8
 
+import common
 from common import *
 from redis import Connection
 import struct
 import StringIO
+
+ndb2 = NDB('127.0.0.5', 5529, '/tmp/r/ndb-5529/', {'loglevel': T_VERBOSE})
+
+def setup():
+    common.setup()
+    ndb2.deploy()
+    ndb2.start()
+
+def teardown():
+    common.teardown()
+    assert(ndb2._alive())
+    ndb2.stop()
 
 def test_oplog():
     k = 'kkkkk'
@@ -46,29 +59,48 @@ def test_oplog():
     print op
     assert len(op) == 2
 
+def _get_all_keys(conn):
+    all_keys = []
+    cursor = '0'
+    while True:
+        cursor, keys = conn.scan(cursor)
+        all_keys = all_keys + keys
+
+        if '0' == cursor:
+            break
+    return all_keys
+
 def test_repl():
     conn = get_conn()
+    conn2 = get_conn(ndb2)
+
+    conn.flushdb()
+    conn2.flushdb()
+
     kv = {'kkk-%s' % i : 'vvv-%s' % i for i in range(12)}
     for k, v in kv.items():
         conn.set(k, v)
         conn.expire(k, 100)
 
-    # setup ndb2
-    ndb2 = NDB('127.0.0.5', 5529, '/tmp/r/ndb-5529/', {'loglevel': T_VERBOSE})
-    ndb2.deploy()
-    ndb2.start()
-
-    conn2 = get_conn(ndb2)
     conn2.slaveof('%s:%s' % (ndb.host(), ndb.port()))
 
-    #tear down
-    assert(ndb2._alive())
+    time.sleep(5)
+    assert(_get_all_keys(conn) == _get_all_keys(conn2))
 
-    try:
-        time.sleep(100)
-    except:
-        pass
-    finally:
-        ndb2.stop()
+    #new write
+    conn.set('new-key', 'new-val')
+    time.sleep(1)
+    print _get_all_keys(conn)
+    print _get_all_keys(conn2)
+    assert(_get_all_keys(conn) == _get_all_keys(conn2))
+
+    #new write
+    conn.delete('new-key')
+    time.sleep(1)
+    assert(_get_all_keys(conn) == _get_all_keys(conn2))
+
+    print 'done'
+
+    # time.sleep(100)
 
 
