@@ -8,20 +8,22 @@
 #define _NDB_REPL_H_
 
 #include "nc_util.h"
+#include "hiredis.h"
 
 typedef struct repl_s {
-    void        *owner;             /* instance */
+    void            *owner;             /* instance */
 
-    char        *master;            /* master info: host:port */
-    uint64_t    repl_opid;          /* replcation pos (the current last opid fetched from master) */
-    uint32_t    connect_timeout;    /* timeout in ms */
-    uint32_t    connect_retry;      /* connect retry */
-    uint32_t    sleep_time;         /* in ms */
+    redisContext    *conn;              /* connection to master */
+    char            *master;            /* master info: host:port */
+    uint64_t        repl_opid;          /* replcation pos (the current last opid fetched from master) */
+    uint32_t        connect_timeout;    /* timeout in ms */
+    uint32_t        connect_retry;      /* connect retry */
+    uint32_t        sleep_time;         /* in ms */
 
     /* TODO: we may do not need a file, we can save it in leveldb,
      * it's easy to write to leveldb,
      * but it's not readable by human */
-    char        *info_path;         /* file to save repl info */
+    char            *info_path;         /* file to save repl info */
 } repl_t;
 
 rstatus_t repl_init(void *owner, repl_t *repl);

@@ -34,10 +34,9 @@ repl_start(repl_t *repl)
 /**
  * connect to master with retry
  */
-static redisContext *
+static rstatus_t
 repl_connect(repl_t *repl)
 {
-    redisContext *c = NULL;
     char *host = NULL;
     char *p;
     int port;
@@ -47,14 +46,15 @@ repl_connect(repl_t *repl)
     host = strdup(repl->master);
     if (host == NULL) {
         log_warn("nomem on strdup");
-        return NULL;
+        return NC_ENOMEM;
     }
 
     /* get host/port from repl->master */
     p = strchr(host, ':');
     if (p == NULL) {
         log_error("bad master: %s", repl->master);
-        goto err;
+        free(host);
+        return NC_ERROR;
     }
 
     *p = '\0';
@@ -67,23 +67,17 @@ repl_connect(repl_t *repl)
 
     retry = 1 + repl->connect_retry;
     while (retry--) {
-        c = redisConnectWithTimeout(host, port, timeout);
-        if (c->err) {
-            log_warn("Connection to %s got error: %s\n", c->errstr);
-            redisFree(c);
-            c = NULL;
+        repl->conn = redisConnectWithTimeout(host, port, timeout);
+        if (repl->conn->err) {
+            log_warn("Connection to %s got error: %s\n", repl->conn->errstr);
+            redisFree(repl->conn);
+            repl->conn = NULL;
+            return NC_ERROR;
         }
-        return c;
+        return NC_OK;
     }
 
-err:
-    if (host != NULL) {
-        free(host);
-    }
-    if (c != NULL) {
-        redisFree(c);
-    }
-    return NULL;
+    return NC_ERROR;
 }
 
 static void
@@ -94,11 +88,11 @@ repl_disconnect(repl_t *repl)
 
 /* PING master */
 static rstatus_t
-repl_ping(repl_t *repl, redisContext *c)
+repl_ping(repl_t *repl)
 {
     redisReply *reply;
 
-    reply = redisCommand(c, "PING");
+    reply = redisCommand(repl->conn, "PING");
     if (reply == NULL) {
         log_warn("repl_ping return NULL");
         return NC_ERROR;
@@ -147,12 +141,12 @@ repl_parse_master_info(char *buf, char *field)
 }
 
 static rstatus_t
-repl_get_master_op_pos(repl_t *repl, redisContext *c)
+repl_get_master_op_pos(repl_t *repl)
 {
     redisReply *reply;
     sds opid_str;
 
-    reply = redisCommand(c, "INFO");
+    reply = redisCommand(repl->conn, "INFO");
     if (reply == NULL) {
         log_warn("repl INFO return NULL");
         return NC_ERROR;
@@ -206,7 +200,7 @@ repl_apply_op(repl_t *repl, uint32_t argc, sds *argv)
  * and apply to the store
  * */
 static rstatus_t
-repl_full_sync(repl_t *repl, redisContext *c)
+repl_full_sync(repl_t *repl)
 {
     redisReply *reply;
     redisReply *subreply;
@@ -216,14 +210,14 @@ repl_full_sync(repl_t *repl, redisContext *c)
     uint32_t cnt = 0;
     sds argv[4];        /* set k v e */
 
-    status = repl_get_master_op_pos(repl, c);
+    status = repl_get_master_op_pos(repl);
     if (status != NC_OK) {
         log_warn("can not get master op_pos");
         return NC_ERROR;
     }
 
     while (1) {
-        reply = redisCommand(c, "VSCAN %s", cursor);
+        reply = redisCommand(repl->conn, "VSCAN %s", cursor);
         if (reply == NULL) {
             log_warn("VSCAN return NULL");
             return NC_ERROR;
@@ -270,7 +264,7 @@ repl_full_sync(repl_t *repl, redisContext *c)
 }
 
 static rstatus_t
-repl_sync_op(repl_t *repl, redisContext *c)
+repl_sync_op(repl_t *repl)
 {
     redisReply *reply;
     redisReply *subreply;
@@ -279,7 +273,7 @@ repl_sync_op(repl_t *repl, redisContext *c)
 
     log_notice("repl_sync_op, call GETOP %"PRIu64" count 100", repl->repl_opid + 1);
 
-    reply = redisCommand(c, "GETOP %"PRIu64" count 100", repl->repl_opid + 1);
+    reply = redisCommand(repl->conn, "GETOP %"PRIu64" count 100", repl->repl_opid + 1);
     if (reply == NULL) {
         log_warn("GETOP return NULL");
         return NC_ERROR;
@@ -326,23 +320,23 @@ repl_sync_op(repl_t *repl, redisContext *c)
 rstatus_t
 repl_run(repl_t *repl)
 {
-    redisContext *c; //TODO: put it into repl_t
     rstatus_t status;
     uint64_t last_repl_opid;
 
-    c = repl_connect(repl);
-    if (c == NULL) {
+    status = repl_connect(repl);
+    if (status != NC_OK) {
         log_error("can not connect to master, error: %s\n", strerror(errno));
         return NC_ERROR;
     }
+
     log_info("repl connect to %s", repl->master);
 
-    status = repl_ping(repl, c);
+    status = repl_ping(repl);
     if (status != NC_OK) {
         //TODO: reconnect
     }
 
-    status = repl_full_sync(repl, c);
+    status = repl_full_sync(repl);
     if (status != NC_OK) {
         //TODO: reconnect
     }
@@ -350,7 +344,7 @@ repl_run(repl_t *repl)
     while (true) {
         last_repl_opid = repl->repl_opid;
 
-        status = repl_sync_op(repl, c);
+        status = repl_sync_op(repl);
         if (status != NC_OK) {
             //TODO: reconnect
         }
@@ -358,14 +352,13 @@ repl_run(repl_t *repl)
         if (repl->repl_opid == last_repl_opid) { /* if no new oplog, sleep */
             usleep(repl->sleep_time * 1000);
 
-            status = repl_ping(repl, c);
+            status = repl_ping(repl);
             if (status != NC_OK) {
                 //TODO: reconnect
             }
         }
     }
 
-    redisFree(c);
     return NC_OK;
 }
 
