@@ -67,20 +67,20 @@ _lua_eval(lua_State *L, const char *expr)
     strcat(buf, expr);
     status = luaL_loadbuffer(L, buf, strlen(buf), "eval");
     if (status) {
-        log_stderr("nc_conf: error on loadbuffer: %s", lua_tostring(L, -1));
+        log_warn("nc_conf: error on loadbuffer: %s", lua_tostring(L, -1));
         lua_pop(L, 1);
         goto out;
     }
 
     status = lua_pcall(L, 0, 1, 0);
     if (status) {
-        log_stderr("nc_conf: error on lua_pcall: %s", lua_tostring(L, -1));
+        log_warn("nc_conf: error on lua_pcall: %s", lua_tostring(L, -1));
         lua_pop(L, 1);
         goto out;
     }
 
     if (lua_isnil(L, -1)) {
-        log_stderr("nc_conf: value is nil: %s", expr);
+        log_warn("nc_conf: value is nil: %s", expr);
         status = NC_ERROR;
     }
     status = NC_OK;
@@ -99,14 +99,14 @@ nc_conf_get_str(nc_conf_t *conf, const char *name, char *default_value)
 
     status = _lua_eval(L, name);
     if (status) {
-        log_stderr("nc_conf: error on _lua_eval: %s", name);
+        log_warn("nc_conf: error on _lua_eval: %s", name);
         ret = default_value;
         goto out;
     }
 
     /* lua_getglobal(conf->L, name); */
     if (!lua_isstring(L, -1)) {
-        log_stderr("nc_conf: use default_value for option %s - %s", name, default_value);
+        log_warn("nc_conf: use default_value for option %s - %s", name, default_value);
         ret = default_value;
         goto out;
     }
@@ -127,13 +127,13 @@ nc_conf_get_num(nc_conf_t *conf, const char *name, int default_value)
 
     status = _lua_eval(L, name);
     if (status) {
-        log_stderr("nc_conf: error on _lua_eval: %s", name);
+        log_warn("nc_conf: error on _lua_eval: %s", name);
         ret = default_value;
         goto out;
     }
 
     if (!lua_isnumber(L, -1)) {
-        log_stderr("nc_conf: use default_value for option %s - %d", name, default_value);
+        log_warn("nc_conf: use default_value for option %s - %d", name, default_value);
         ret = default_value;
         goto out;
     }

@@ -27,9 +27,9 @@ static command_t command_table[] = {
     { "expire",     3,  command_process_expire  },
     { "ttl",        2,  command_process_ttl     },
 
+    { "getop",      -2, command_process_getop   },
     { "scan",       -2, command_process_scan    },
     { "vscan",      -2, command_process_scan    },  /* scan with value and expire */
-    { "getop",      -2, command_process_getop   },
 
     { "ping",       1,  command_process_ping    },
     { "flushdb",    1,  command_process_flushdb },

@@ -165,7 +165,7 @@ store_encode_val(sds val, uint64_t expire)
 {
     sds newval;
 
-    newval = sdscpylen(sdsempty(), STORE_NS_KV, 1); //prefix
+    newval = sdscpylen(sdsempty(), STORE_NS_KV, 1);
     newval = sdscatlen(newval, (char *)&expire, sizeof(expire));
     newval = sdscatlen(newval, val, sdslen(val));
 

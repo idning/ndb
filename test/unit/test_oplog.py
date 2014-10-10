@@ -96,7 +96,6 @@ def test_repl():
     conn2.slaveof('%s:%s' % (ndb.host(), ndb.port()))
 
     time.sleep(2)
-    print 'xx'
     print _get_all_keys(conn)
     print _get_all_keys(conn2)
     assert(_get_all_keys(conn) == _get_all_keys(conn2))
