@@ -26,5 +26,3 @@ sds cursor_next_key(cursor_t *cursor);
 rstatus_t cursor_next(cursor_t *cursor, sds *key, sds *val, uint64_t *expire);
 
 #endif
-/* vim: set expandtab ts=4 sw=4 sts=4 tw=100: */
-

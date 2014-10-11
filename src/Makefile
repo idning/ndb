@@ -69,7 +69,7 @@ test/test_oplog.o: ndb_oplog.c test/test_oplog.c
 
 #test-repl
 TEST_REPL_BIN=test_repl
-TEST_REPL_OBJ=$(UTIL_OBJ) test/test_repl.o ndb_leveldb.o ndb_oplog.o
+TEST_REPL_OBJ=$(UTIL_OBJ) test/test_repl.o ndb_leveldb.o ndb_oplog.o ndb_job.o
 $(TEST_REPL_BIN): $(TEST_REPL_OBJ) 
 	$(LD) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 test/test_repl.o: ndb_repl.c test/test_repl.c

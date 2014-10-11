@@ -184,13 +184,13 @@ ndb_init(instance_t *instance)
         return status;
     }
 
-    status = server_init(instance, &instance->srv,
-            ndb_conn_recv_done, ndb_conn_send_done);
+    status = job_init(instance);
     if (status != NC_OK) {
         return status;
     }
 
-    status = job_init(instance);
+    status = server_init(instance, &instance->srv,
+            ndb_conn_recv_done, ndb_conn_send_done);
     if (status != NC_OK) {
         return status;
     }

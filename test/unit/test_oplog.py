@@ -8,16 +8,19 @@ import struct
 import StringIO
 
 ndb2 = NDB('127.0.0.5', 5529, '/tmp/r/ndb-5529/', {'loglevel': T_VERBOSE})
+ndb3 = NDB('127.0.0.5', 5530, '/tmp/r/ndb-5530/', {'loglevel': T_VERBOSE})
 
 def _setup():
     print 'xxxxx _setup'
-    ndb2.deploy()
-    ndb2.start()
+    for ndb in [ndb2, ndb3]:
+        ndb.deploy()
+        ndb.start()
 
 def _teardown():
     print 'xxxxx _teardown'
-    assert(ndb2._alive())
-    ndb2.stop()
+    for ndb in [ndb2, ndb3]:
+        assert(ndb._alive())
+        ndb.stop()
 
 def test_oplog():
     k = 'kkkkk'
@@ -92,7 +95,7 @@ def test_repl():
         conn.set(k, v)
         conn.expire(k, 100)
 
-    conn2.slaveof('%s:%s' % (ndb.host(), ndb.port()))
+    conn2.slaveof(ndb.host(), ndb.port())
 
     time.sleep(2)
     print _get_all_keys(conn)
@@ -124,7 +127,7 @@ def test_repl_slave_readonly():
         conn.set(k, v)
         conn.expire(k, 100)
 
-    conn2.slaveof('%s:%s' % (ndb.host(), ndb.port()))
+    conn2.slaveof(ndb.host(), ndb.port())
     time.sleep(2)
 
     for k, v in kv.items():
@@ -137,6 +140,55 @@ def test_repl_slave_readonly():
     assert_fail("READONLY", conn2.flushdb)
 
 @with_setup(_setup, _teardown)
+def test_repl_bad_master():
+    conn2 = get_conn(ndb2)
+    conn2.slaveof(ndb.host(), '500') # 500 is a bad port
+    for i in range(3):
+        time.sleep(1)
+        assert_fail("READONLY", conn2.set, 'k', 'v')
+        assert(_get_all_keys(conn2) == [])
+
+'''
+
+ndb2 slaveof
+NULL -> ndb -> ndb3 -> NULL
+
+'''
+@with_setup(_setup, _teardown)
+def test_repl_switch_master():
+    conn = get_conn()
+    conn2 = get_conn(ndb2)
+    conn3 = get_conn(ndb3)
+
+    kv = {'kkk-%s' % i : 'vvv-%s' % i for i in range(12)}
+    for k, v in kv.items():
+        conn.set(k, v)
+
+    kv = {'kkk-%s' % i : 'vvv-%s' % i for i in range(20, 22)}
+    for k, v in kv.items():
+        conn3.set(k, v)
+
+    # slave of ndb
+    conn2.slaveof(ndb.host(), ndb.port())
+    time.sleep(2)
+    assert(_get_all_keys(conn) == _get_all_keys(conn2))
+
+    # slave of ndb3
+    conn2.slaveof(ndb3.host(), ndb3.port())
+    time.sleep(2)
+    assert(_get_all_keys(conn3) == _get_all_keys(conn2))
+
+    # slave of NO ONE
+    conn2.slaveof('no', 'one')
+    time.sleep(2)
+    assert(_get_all_keys(conn3) == _get_all_keys(conn2))        # still same as ndb3
+
+
+    conn3.set('new-key', 'new-val')
+    time.sleep(1)
+    assert(_get_all_keys(conn3) == _get_all_keys(conn2))
+
+@with_setup(_setup, _teardown)
 def test_repl_master_restart():
     conn = get_conn()
     conn2 = get_conn(ndb2)
@@ -146,7 +198,7 @@ def test_repl_master_restart():
         conn.set(k, v)
         conn.expire(k, 100)
 
-    conn2.slaveof('%s:%s' % (ndb.host(), ndb.port()))
+    conn2.slaveof(ndb.host(), ndb.port())
 
     time.sleep(2)
     assert(_get_all_keys(conn) == _get_all_keys(conn2))

@@ -95,6 +95,11 @@ job_run(void *arg)
 {
     job_t *job = arg;
 
+    if (job->type == JOB_REPL) {
+        job_run_repl(job);
+        return;
+    }
+
     while (1) {
         pthread_mutex_lock(&job->mutex);
         job->running = 0;
@@ -109,10 +114,8 @@ job_run(void *arg)
         case JOB_COMPACT:
             job_run_compact(job);
             break;
-        case JOB_REPL:              /* TODO: jog->run(job) */
-            job_run_repl(job);
-            break;
         default:
+            log_warn("unknown job: %d", job->type);
             break;
         }
     }

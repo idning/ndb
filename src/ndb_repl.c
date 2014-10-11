@@ -11,22 +11,14 @@
 rstatus_t
 repl_init(void *owner, repl_t *repl)
 {
-
     repl->owner = owner;
+    repl->master = NULL;
 
-    /* do nothing, what we want to init should in repl_start */
     return NC_OK;
 }
 
 rstatus_t
 repl_deinit(repl_t *repl)
-{
-    return NC_OK;
-}
-
-
-rstatus_t
-repl_start(repl_t *repl)
 {
     return NC_OK;
 }
@@ -42,6 +34,8 @@ repl_connect(repl_t *repl)
     int port;
     struct timeval timeout = {0, 500000 };  /* default 500 ms */
     uint32_t retry;
+
+    ASSERT(repl->master != NULL);
 
     host = strdup(repl->master);
     if (host == NULL) {
@@ -83,8 +77,11 @@ repl_connect(repl_t *repl)
 static void
 repl_disconnect(repl_t *repl)
 {
-    redisFree(repl->conn);
-    repl->conn = NULL;
+    log_info("disconnected from %s", repl->master);
+    if (repl->conn) {
+        redisFree(repl->conn);
+        repl->conn = NULL;
+    }
 }
 
 /* PING master */
@@ -349,7 +346,9 @@ repl_sync(repl_t *repl)
         return status;
     }
 
-    if (!(repl->repl_opid >= range[0] && repl->repl_opid <= range[1])) {
+    /*TODO: think carefully about this */
+    if (repl->repl_opid == 0 ||
+            repl->repl_opid < range[0] || repl->repl_opid > range[1]) {
         /* init sync or outof sync, need a full resync  */
         status = repl_sync_full(repl);
         if (status != NC_OK) {
@@ -386,6 +385,12 @@ repl_run(repl_t *repl)
     rstatus_t status;
 
     while (true) {
+        if (repl->master == NULL) {
+            log_debug("no repl->master is set, repl wait");
+            usleep(repl->sleep_time * 1000);
+            continue;
+        }
+
         status = repl_connect(repl);
         if (status != NC_OK) {
             log_error("can not connect to master (%s), error: %s\n", repl->master, strerror(errno));
@@ -413,14 +418,54 @@ repl_info_flush(repl_t *repl)
     return NC_OK;
 }
 
+/**
+ * change repl->master
+ *
+ * set repl->master to NULL means it's not a slave.
+ *
+ * TODO: need thread safe
+ *
+ */
 rstatus_t
 repl_set_master(repl_t *repl, char *master)
 {
+    instance_t *instance = repl->owner;
+    store_t *store = &instance->store;
+
+    if (master == NULL && repl->master == NULL) {
+        log_info("master not change");
+        return NC_OK;
+    }
+
+    if (master && repl->master &&
+        0 == nc_strncmp(master, repl->master, strlen(master))) {
+        log_info("master not change");
+        return NC_OK;
+    }
+
+    /* There was no previous master or the user specified a different one,
+     * we can continue. */
+
+    /*
+     *
+     * TODO: we should set repl.newmaster here.
+     * and in the repl thread, we check repl.newmaster and if it's set, do disconnect and reconnect
+     *
+     * - how about the newmaster is NULL?
+     */
     log_info("set master from %s to %s", repl->master, master);
     if (repl->master) {
+        repl_disconnect(repl);
+        repl->repl_opid = 0;
+
         sdsfree(repl->master);
+        repl->master = NULL;
     }
-    repl->master = sdsnew(master);
+
+    if (master) {
+        store_drop(store);
+        repl->master = sdsnew(master);
+    }
 
     return NC_OK;
 }

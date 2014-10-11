@@ -678,12 +678,8 @@ command_process_slaveof(struct conn *conn, msg_t *msg)
         repl_set_master(repl, master);
     }
 
-    status = job_signal(JOB_REPL);
-    if (status == NC_OK) {
-        return command_reply_ok(conn);
-    } else {
-        return command_reply_err(conn, "-ERR repl already running\r\n");
-    }
+    return command_reply_ok(conn);
+
 }
 
 /*

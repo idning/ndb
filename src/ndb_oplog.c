@@ -479,7 +479,7 @@ oplog_range(oplog_t *oplog, uint64_t *first, uint64_t *last)
     if (oplog->opid == 0) {
         *first = 0;
         *last = 0;
-        return;
+        return NC_OK;
     }
 
     seg0 = array_get(oplog->segments, 0);
