@@ -183,10 +183,9 @@ def test_repl_switch_master():
     time.sleep(2)
     assert(_get_all_keys(conn3) == _get_all_keys(conn2))        # still same as ndb3
 
-
     conn3.set('new-key', 'new-val')
     time.sleep(1)
-    assert(_get_all_keys(conn3) == _get_all_keys(conn2))
+    assert(len(_get_all_keys(conn3)) == 1 + len(_get_all_keys(conn2)))
 
 @with_setup(_setup, _teardown)
 def test_repl_master_restart():

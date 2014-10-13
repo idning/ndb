@@ -448,6 +448,8 @@ repl_set_master(repl_t *repl, char *master)
 
     /*
      *
+     * FIXME
+     *
      * TODO: we should set repl.newmaster here.
      * and in the repl thread, we check repl.newmaster and if it's set, do disconnect and reconnect
      *
@@ -455,7 +457,9 @@ repl_set_master(repl_t *repl, char *master)
      */
     log_info("set master from %s to %s", repl->master, master);
     if (repl->master) {
-        repl_disconnect(repl);
+        close(repl->conn->fd);  /* TODO: hack here, this will make ping/scan/getop fail.
+                                   then we can reconnect to new master */
+        /* repl_disconnect(repl); */
         repl->repl_opid = 0;
 
         sdsfree(repl->master);
