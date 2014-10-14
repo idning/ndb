@@ -22,10 +22,11 @@ typedef struct server_s {
 
     conn_callback_t     recv_done;                  /* recv done handler */
     conn_callback_t     send_done;                  /* send done handler */
+    cron_callback_t     cron_callback;              /* cron handler */
 } server_t;
 
 rstatus_t server_init(void *owner, server_t *srv,
-        conn_callback_t recv_done, conn_callback_t send_done);
+        conn_callback_t recv_done, conn_callback_t send_done, cron_callback_t cron_callback);
 rstatus_t server_deinit(server_t *srv);
 rstatus_t server_run(server_t *srv);
 

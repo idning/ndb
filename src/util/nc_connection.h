@@ -20,7 +20,8 @@
 
 #include "nc_util.h"
 
-typedef rstatus_t (*conn_callback_t)(struct conn*);
+typedef rstatus_t (*conn_callback_t)(struct conn *);
+typedef rstatus_t (*cron_callback_t)(void *arg);  /* arg: instance */
 
 /* TODO: this file need modify */
 struct conn {

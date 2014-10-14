@@ -39,7 +39,7 @@ clean:
 
 #ndb-server
 KV_BIN=ndb
-KV_OBJ=$(UTIL_OBJ) ndb.o ndb_message.o ndb_leveldb.o ndb_command.o ndb_job.o ndb_cursor.o ndb_oplog.o ndb_repl.o
+KV_OBJ=$(UTIL_OBJ) ndb.o ndb_message.o ndb_leveldb.o ndb_command.o ndb_job.o ndb_cursor.o ndb_oplog.o ndb_repl.o ndb_stat.o
 $(KV_BIN): $(KV_OBJ)
 	$(LD) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
@@ -69,7 +69,7 @@ test/test_oplog.o: ndb_oplog.c test/test_oplog.c
 
 #test-repl
 TEST_REPL_BIN=test_repl
-TEST_REPL_OBJ=$(UTIL_OBJ) test/test_repl.o ndb_leveldb.o ndb_oplog.o ndb_job.o
+TEST_REPL_OBJ=$(UTIL_OBJ) test/test_repl.o ndb_leveldb.o ndb_oplog.o ndb_job.o ndb_stat.o
 $(TEST_REPL_BIN): $(TEST_REPL_OBJ) 
 	$(LD) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 test/test_repl.o: ndb_repl.c test/test_repl.c

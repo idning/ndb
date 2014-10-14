@@ -11,4 +11,4 @@ case:
 	nosetests --nocapture --nologcapture -v  unit.test_protocol:test_badreq
 
 wait:
-	export T_VERBOSE=9; nosetests --nocapture --nologcapture -v  unit.test_basic:just_wait
+	export T_VERBOSE=9; nosetests --nocapture --nologcapture -v  unit.test_repl:repl_wait

@@ -5,7 +5,7 @@ static rstatus_t handle_timer(server_t *srv);
 
 rstatus_t
 server_init(void *owner, server_t *srv,
-        conn_callback_t recv_done, conn_callback_t send_done)
+        conn_callback_t recv_done, conn_callback_t send_done, cron_callback_t cron_callback)
 {
     srv->owner = owner;
 
@@ -15,7 +15,8 @@ server_init(void *owner, server_t *srv,
 
     srv->recv_done = recv_done;
     srv->send_done = send_done;
-    srv->ev_timeout = 1000;     /* every second */
+    srv->cron_callback = cron_callback;
+    srv->ev_timeout = 1;     /* every ms */
 
     srv->evb = event_base_create(EVENT_SIZE, &handle_event);
     if (srv->evb == NULL) {
@@ -332,7 +333,9 @@ handle_error(server_t *srv, struct conn *conn)
 static rstatus_t
 handle_timer(server_t *srv)
 {
-    log_debug("on handle_timer ");
+    log_verb("on handle_timer");
+
+    srv->cron_callback(srv->owner);
 
     return NC_OK;
 }

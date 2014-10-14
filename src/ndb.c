@@ -141,10 +141,31 @@ ndb_load_conf(instance_t *instance)
 #undef KB
 #undef MB
 
+#define run_with_period(_ms) if ((instance->cronloops) % _ms == 0)
+
+/*
+ * called every ms
+ * */
+rstatus_t
+ndb_cron(void *arg)
+{
+    instance_t *instance = arg;
+    log_debug("ndb_cron");
+
+    run_with_period(10) {
+        stat_cron(&instance->stat);
+    }
+
+    instance->cronloops++;
+    return NC_OK;
+}
+
 static rstatus_t
 ndb_init(instance_t *instance)
 {
     rstatus_t status;
+
+    instance->cronloops = 0;
 
     status = log_init(instance->loglevel, instance->logfile);
     if (status != NC_OK) {
@@ -169,6 +190,11 @@ ndb_init(instance_t *instance)
     command_init();
     cursor_init();
 
+    status = stat_init(instance, &instance->stat);
+    if (status != NC_OK) {
+        return status;
+    }
+
     status = store_init(instance, &instance->store);
     if (status != NC_OK) {
         return status;
@@ -190,7 +216,7 @@ ndb_init(instance_t *instance)
     }
 
     status = server_init(instance, &instance->srv,
-            ndb_conn_recv_done, ndb_conn_send_done);
+            ndb_conn_recv_done, ndb_conn_send_done, ndb_cron);
     if (status != NC_OK) {
         return status;
     }
@@ -212,6 +238,8 @@ ndb_deinit(instance_t *instance)
     cursor_deinit();
 
     command_deinit();
+
+    stat_deinit(&instance->stat);
 
     server_deinit(&instance->srv);
 

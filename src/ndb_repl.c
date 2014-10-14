@@ -182,22 +182,27 @@ repl_apply_op(repl_t *repl, uint32_t argc, sds *argv)
     uint64_t expire;
     instance_t *instance = repl->owner;
     store_t *store = &instance->store;
+    stat_t *stat = &instance->stat;
 
     if (0 == strcasecmp(argv[0], "SET")) {
         ASSERT(argc == 4);
 
         log_debug("repl_apoly_op: argc = %u %s %s", argc, argv[0], argv[1]);
         expire = atoll(argv[3]);
+        stat_inc(stat, 1, 1);
+
         return store_set(store, argv[1], argv[2], expire);  //TODO: is store_set(leveldb) thread safe?
     } else if (0 == strcasecmp(argv[0], "DEL")) {
         ASSERT(argc == 2);
 
         log_debug("repl_apoly_op: argc = %u %s %s", argc, argv[0], argv[1]);
+        stat_inc(stat, 1, 1);
         return store_del(store, argv[1]);
     } else if (0 == strcasecmp(argv[0], "DROP")) {
         ASSERT(argc == 1);
 
         log_debug("repl_apoly_op: argc = %u %s", argc, argv[0]);
+        stat_inc(stat, 0, 1);
         return store_drop(store);
     } else {
         ASSERT(0);
@@ -386,7 +391,7 @@ repl_run(repl_t *repl)
 
     while (true) {
         if (repl->master == NULL) {
-            log_debug("no repl->master is set, repl wait");
+            log_verb("no repl->master is set, repl wait");
             usleep(repl->sleep_time * 1000);
             continue;
         }

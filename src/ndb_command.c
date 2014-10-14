@@ -199,6 +199,14 @@ command_reply_num(struct conn *conn, int64_t n)
     return _command_reply_int(conn, ':', n);
 }
 
+static stat_t *
+ndb_conn_get_stat(struct conn *conn)
+{
+    server_t *srv = conn->owner;
+    instance_t *instance = srv->owner;
+    return &instance->stat;
+}
+
 static repl_t *
 ndb_conn_get_repl(struct conn *conn)
 {
@@ -230,6 +238,7 @@ command_process(struct conn *conn, msg_t *msg)
     sds name;
     rstatus_t status;
     repl_t *repl = ndb_conn_get_repl(conn);
+    stat_t *stat = ndb_conn_get_stat(conn);
     command_t *cmd;
 
     ASSERT(msg != NULL);
@@ -264,6 +273,12 @@ command_process(struct conn *conn, msg_t *msg)
     if (status != NC_OK) {                  /* store engine error will got here */
         log_warn("ERR cmd->proc got err");
         return command_reply_err(conn, "-ERR error on process command\r\n");
+    }
+
+    if (command_has_flag(cmd, 'w')) {
+        stat_inc(stat, 1, 1);
+    } else {
+        stat_inc(stat, 0, 1);
     }
 
     return NC_OK;
@@ -709,6 +724,7 @@ command_process_info(struct conn *conn, msg_t *msg)
     server_t *srv = conn->owner;
     instance_t *instance = srv->owner;
     oplog_t *oplog = &instance->oplog;
+    stat_t *stat = &instance->stat;
     sds info = sdsempty();
     sds s = NULL;
     uint64_t oplog_first, oplog_last;
@@ -720,6 +736,7 @@ command_process_info(struct conn *conn, msg_t *msg)
     info = sdscat(info, "leveldb:");
     info = sdscatsds(info, s);
     info = sdscat(info, "\r\n");
+    sdsfree(s);
 
     /* oplog */
     oplog_range(oplog, &oplog_first, &oplog_last);
@@ -727,12 +744,15 @@ command_process_info(struct conn *conn, msg_t *msg)
     info = sdscatprintf(info, "oplog.first:%"PRIu64"\r\n", oplog_first);
     info = sdscatprintf(info, "oplog.last:%"PRIu64"\r\n", oplog_last);
 
+    /* stat */
+    s = stat_info(stat);
+    info = sdscatprintf(info, "#stat\r\n");
+    info = sdscatprintf(info, s);
+    sdsfree(s);
+
     status = command_reply_bulk(conn, info, sdslen(info));
 
     sdsfree(info);
-    if (s) {
-        sdsfree(s);
-    }
     return status;
 }
 

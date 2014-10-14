@@ -224,3 +224,13 @@ def test_repl_master_restart():
 
     print 'done'
 
+@with_setup(_setup, _teardown)
+def repl_wait():
+    conn2 = get_conn(ndb2)
+
+    conn2.slaveof(ndb.host(), ndb.port())
+
+    try:
+        time.sleep(60*60)
+    except:
+        pass

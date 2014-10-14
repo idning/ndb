@@ -601,6 +601,6 @@ uint64_t gettid() {
 #elif defined(__APPLE__) && defined(__MACH__)
 	return syscall(SYS_thread_selfid);
 #else
-#error Don't know how to get tid on this platform
+#error Do not know how to get tid on this platform
 #endif
 }
