@@ -151,22 +151,25 @@ static rstatus_t
 server_listen(server_t *srv)
 {
     int fd;
+    char hostname[NC_MAXHOSTNAMELEN];
     char *host;
     char *port;
     struct conn *conn;
     rstatus_t status;
     struct addrinfo hints, *res;
 
+    strncpy(hostname, srv->listen, sizeof(hostname));
+
     /* TODO: handle unix domain socket here */
     /* get host/port from srv->listen */
-    port = strchr(srv->listen, ':');
+    port = strchr(hostname, ':');
     if (port != NULL) {
-        host = srv->listen;
+        host = hostname;
         *port = '\0';
         port++;
     } else {  /* no ':' found */
         host = NULL;
-        port = srv->listen;
+        port = hostname;
     }
 
     /* get the address info */
